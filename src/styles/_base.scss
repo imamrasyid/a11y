@@ -1,0 +1,54 @@
+// =============================================================================
+// _base.scss — Foundational elements
+// sr-only, skip link, live region, inline SVG icon
+// =============================================================================
+
+@use "variables" as v;
+@use "mixins" as m;
+
+// ── Screen reader only ────────────────────────────────────────────────────────
+.a11y-sr-only {
+  @include m.visually-hidden;
+}
+
+// ── Skip link ─────────────────────────────────────────────────────────────────
+.a11y-skip-link {
+  position: fixed;
+  top: -100px;
+  left: 16px;
+  z-index: calc(#{v.$a11y-z} + 10);
+  padding: 10px 20px;
+  background-color: v.$a11y-primary;
+  color: #fff !important;
+  font-family: var(--a11y-font-ui);
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 0 0 v.$a11y-radius-btn v.$a11y-radius-btn;
+  text-decoration: none !important;
+  transition: top 0.2s ease;
+  outline: none;
+  box-shadow: v.$a11y-shadow-btn;
+
+  &:focus {
+    top: 0;
+    outline: 3px solid #fff !important;
+    outline-offset: 2px !important;
+    box-shadow: none !important;
+  }
+}
+
+// ── ARIA live region ──────────────────────────────────────────────────────────
+.a11y-live-region {
+  @include m.visually-hidden;
+}
+
+// ── Inline SVG icon ───────────────────────────────────────────────────────────
+// Used throughout the widget — no icon font dependency.
+.a11y-icon {
+  width: 1em;
+  height: 1em;
+  fill: currentColor;
+  flex-shrink: 0;
+  vertical-align: middle;
+  pointer-events: none;
+}

@@ -1,0 +1,50 @@
+// =============================================================================
+// _fab.scss — Floating Action Button
+// =============================================================================
+
+@use "variables" as v;
+@use "mixins" as m;
+
+.a11y-fab {
+  position: fixed;
+  z-index: v.$a11y-z;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background-color: v.$a11y-primary;
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: v.$a11y-shadow-btn;
+  transition: v.$a11y-transition;
+  outline: none;
+
+  .a11y-icon {
+    width: 24px;
+    height: 24px;
+  }
+
+  &:hover {
+    background-color: v.$a11y-primary-dark;
+    transform: scale(1.08);
+    box-shadow: 0 4px 16px rgba(v.$a11y-primary, 0.4);
+  }
+
+  &:focus-visible {
+    @include m.focus-ring(v.$a11y-primary, 3px);
+    box-shadow: none !important;
+  }
+
+  &[aria-expanded="true"] {
+    background-color: v.$a11y-primary-dark;
+  }
+}
+
+// ── Positional variants ───────────────────────────────────────────────────────
+@include m.panel-position("bottom-right");
+@include m.panel-position("bottom-left");
+@include m.panel-position("top-right");
+@include m.panel-position("top-left");

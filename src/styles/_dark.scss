@@ -1,0 +1,24 @@
+// =============================================================================
+// _dark.scss — Dark mode
+// Responds to OS preference AND explicit class/attribute on html or body.
+// All overrides work via CSS custom properties so no selectors need repeating.
+// =============================================================================
+
+@use "variables" as v;
+@use "mixins" as m;
+
+// ── OS preference ─────────────────────────────────────────────────────────────
+@media (prefers-color-scheme: dark) {
+  :root {
+    @include m.dark-surface;
+  }
+}
+
+// ── Explicit dark mode — overrides media query ────────────────────────────────
+// Supports common patterns: data-theme="dark", class="dark", class="dark-mode"
+html[data-theme="dark"],
+html.dark,
+html.dark-mode,
+body.dark-mode {
+  @include m.dark-surface;
+}

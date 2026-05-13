@@ -1,0 +1,40 @@
+// =============================================================================
+// a11y-widget — Main stylesheet entry point
+//
+// Import order matters:
+//   1. variables  — tokens + :root CSS custom properties
+//   2. mixins     — helpers (no output on their own)
+//   3. base       — sr-only, skip link, live region, icon
+//   4. fab        — floating action button
+//   5. panel      — panel shell, header, body, footer
+//   6. components — opt-btn, toggle-row, textsize, divider
+//   7. modifiers  — html[data-a11y-*] state rules
+//   8. tts        — highlight, permission prompt
+//   9. dark       — dark mode (media query + explicit class)
+//  10. responsive — mobile breakpoints
+//  11. print      — hide widget on print
+//
+// Consumer SCSS override pattern:
+//   // 1. Override tokens BEFORE importing
+//   $a11y-primary: #7c3aed;
+//   $a11y-radius:  8px;
+//
+//   // 2. Then import the full sheet
+//   @use '@a11y-widget/core/src/styles/index' as *;
+//
+//   // Or import only what you need:
+//   @use '@a11y-widget/core/src/styles/variables' as v;
+//   @use '@a11y-widget/core/src/styles/panel';
+// =============================================================================
+
+@use "variables";
+@use "mixins";
+@use "base";
+@use "fab";
+@use "panel";
+@use "components";
+@use "modifiers";
+@use "tts";
+@use "dark";
+@use "responsive";
+@use "print";

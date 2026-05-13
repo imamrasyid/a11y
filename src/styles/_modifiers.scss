@@ -1,0 +1,231 @@
+// =============================================================================
+// _modifiers.scss — Global state modifiers
+// All rules are triggered by data-a11y-* attributes on <html>.
+// JS modules only set/remove these attributes — no style injection.
+// =============================================================================
+
+@use "variables" as v;
+@use "mixins" as m;
+
+// ── Contrast: Bright ──────────────────────────────────────────────────────────
+html[data-a11y-contrast="bright"] {
+  filter: brightness(1.15) contrast(1.25);
+  @include m.exclude-from-filter;
+}
+
+// ── Contrast: Inverted ────────────────────────────────────────────────────────
+html[data-a11y-contrast="reverse"] {
+  filter: invert(1) hue-rotate(180deg);
+  @include m.reinvert-media;
+}
+
+// ── Contrast: Grayscale ───────────────────────────────────────────────────────
+html[data-a11y-contrast="grayscale"] {
+  filter: grayscale(100%);
+  @include m.exclude-from-filter;
+}
+
+// ── Underline links ───────────────────────────────────────────────────────────
+html[data-a11y-underline-links="on"] a {
+  text-decoration: underline !important;
+  text-underline-offset: 3px;
+}
+
+// ── Underline headers ─────────────────────────────────────────────────────────
+html[data-a11y-underline-headers="on"] {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    border-bottom: 2px solid currentColor;
+    padding-bottom: 4px;
+  }
+}
+
+// ── Image alt captions (injected by images.js) ────────────────────────────────
+.a11y-img-caption {
+  display: block;
+  font-family: var(--a11y-font-ui);
+  font-size: 11px;
+  color: v.$a11y-text-muted;
+  text-align: center;
+  margin-top: 4px;
+  font-style: italic;
+}
+
+// ── Highlight hover ───────────────────────────────────────────────────────────
+html[data-a11y-highlight-focus="on"] {
+  a,
+  button,
+  input,
+  select,
+  textarea,
+  label,
+  [role="button"],
+  [tabindex] {
+    &:hover {
+      outline: 2px solid v.$a11y-primary !important;
+      outline-offset: 2px !important;
+      box-shadow: 0 0 0 4px rgba(v.$a11y-primary, 0.15) !important;
+    }
+  }
+
+  // Exclude the widget itself
+  .a11y-panel,
+  .a11y-fab {
+    a:hover,
+    button:hover {
+      outline: none !important;
+      box-shadow: revert !important;
+    }
+  }
+}
+
+// ── Keyboard navigation focus ring ────────────────────────────────────────────
+html[data-a11y-keyboard="on"] {
+  a,
+  button,
+  input,
+  select,
+  textarea,
+  [tabindex],
+  [role="button"],
+  [role="link"],
+  [role="menuitem"],
+  [role="tab"] {
+    &:focus-visible {
+      @include m.focus-ring-strong(v.$a11y-primary);
+    }
+    // :focus fallback for browsers without :focus-visible
+    &:focus {
+      @include m.focus-ring-strong(v.$a11y-primary);
+    }
+  }
+}
+
+// ── Readable font ─────────────────────────────────────────────────────────────
+html[data-a11y-font="readable"] {
+  body,
+  p,
+  li,
+  td,
+  span {
+    font-family: Arial, Helvetica, sans-serif !important;
+    letter-spacing: 0.04em;
+    word-spacing: 0.1em;
+  }
+}
+
+// ── Wide line spacing ─────────────────────────────────────────────────────────
+html[data-a11y-spacing="wide"] {
+  p,
+  li,
+  td,
+  span,
+  div {
+    line-height: 2 !important;
+    letter-spacing: 0.12em !important;
+    word-spacing: 0.16em !important;
+  }
+}
+
+// ── Align left ────────────────────────────────────────────────────────────────
+html[data-a11y-align="left"] {
+  p,
+  li,
+  td,
+  th,
+  span,
+  div,
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6,
+  blockquote,
+  figcaption {
+    text-align: left !important;
+  }
+
+  // Keep widget layout intact
+  .a11y-panel,
+  .a11y-panel * {
+    text-align: revert !important;
+  }
+}
+
+// ── Hide images ───────────────────────────────────────────────────────────────
+html[data-a11y-hide-images="on"] {
+  img {
+    visibility: hidden !important;
+  }
+
+  .a11y-fab img,
+  .a11y-panel img {
+    visibility: visible !important;
+  }
+}
+
+// ── Animations: off (user explicit) ──────────────────────────────────────────
+html[data-a11y-animations="off"] {
+  *,
+  *::before,
+  *::after {
+    animation-play-state: paused !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+// ── Animations: on (user explicit — overrides OS prefers-reduced-motion) ──────
+html[data-a11y-animations="on"] * {
+  animation-play-state: running !important;
+}
+
+// ── Cursor: large white ───────────────────────────────────────────────────────
+// stylelint-disable value-no-vendor-prefix
+$_cursor-white:
+  url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40' viewBox='0 0 40 40'%3E%3Cpath d='M8 4 L8 32 L16 24 L22 36 L26 34 L20 22 L30 22 Z' fill='white' stroke='black' stroke-width='2'/%3E%3C/svg%3E")
+    8 4,
+  auto;
+$_cursor-black:
+  url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40' viewBox='0 0 40 40'%3E%3Cpath d='M8 4 L8 32 L16 24 L22 36 L26 34 L20 22 L30 22 Z' fill='black' stroke='white' stroke-width='2'/%3E%3C/svg%3E")
+    8 4,
+  auto;
+// stylelint-enable value-no-vendor-prefix
+
+html[data-a11y-cursor="white"],
+html[data-a11y-cursor="white"] *,
+html[data-a11y-cursor="white"] a,
+html[data-a11y-cursor="white"] button {
+  cursor: $_cursor-white !important;
+}
+
+html[data-a11y-cursor="black"],
+html[data-a11y-cursor="black"] *,
+html[data-a11y-cursor="black"] a,
+html[data-a11y-cursor="black"] button {
+  cursor: $_cursor-black !important;
+}
+
+// ── Reading guide ─────────────────────────────────────────────────────────────
+// Element is always in the DOM (injected by readingGuide.js).
+// Visibility is controlled by the data attribute — no JS style manipulation.
+.a11y-reading-guide {
+  position: fixed;
+  left: 0;
+  right: 0;
+  height: 36px;
+  background-color: rgba(v.$a11y-primary, 0.1);
+  border-top: 2px solid rgba(v.$a11y-primary, 0.35);
+  border-bottom: 2px solid rgba(v.$a11y-primary, 0.35);
+  pointer-events: none;
+  z-index: calc(#{v.$a11y-z} - 1);
+  display: none;
+}
+
+html[data-a11y-reading-guide="on"] .a11y-reading-guide {
+  display: block;
+}

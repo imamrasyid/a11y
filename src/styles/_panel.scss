@@ -1,0 +1,154 @@
+// =============================================================================
+// _panel.scss — Accessibility panel shell
+// Header, body, footer
+// =============================================================================
+
+@use "variables" as v;
+@use "mixins" as m;
+
+// ── Shell ─────────────────────────────────────────────────────────────────────
+.a11y-panel {
+  position: fixed;
+  z-index: v.$a11y-z;
+  width: v.$a11y-panel-width;
+  max-height: calc(100vh - 120px);
+  background-color: v.$a11y-bg;
+  border-radius: v.$a11y-radius;
+  box-shadow: v.$a11y-shadow;
+  border: 1px solid v.$a11y-border;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  color: v.$a11y-text;
+  // Use CSS custom property so host-app font var takes precedence at runtime
+  font-family: var(--a11y-font-ui);
+
+  // Hidden state — positional transform is set per-variant in _fab.scss
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity 0.22s ease,
+    visibility 0.22s ease,
+    transform 0.22s ease;
+
+  // Open state
+  &.a11y-panel--open {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0) scale(1) !important;
+  }
+}
+
+// ── Header ────────────────────────────────────────────────────────────────────
+.a11y-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 18px 12px;
+  border-bottom: 1px solid v.$a11y-border;
+  flex-shrink: 0;
+}
+
+.a11y-panel__title {
+  font-family: var(--a11y-font-heading);
+  font-size: 15px;
+  font-weight: 700;
+  color: v.$a11y-text;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  .a11y-icon {
+    width: 18px;
+    height: 18px;
+    color: v.$a11y-primary;
+  }
+}
+
+.a11y-panel__header-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+// ── Header action buttons — shared styles via mixin (safe across @use) ────────
+@mixin _panel-action-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 5px 8px;
+  border-radius: 8px;
+  font-family: var(--a11y-font-ui);
+  font-size: 12px;
+  color: v.$a11y-text-muted;
+  transition: v.$a11y-transition;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  outline: none;
+
+  .a11y-icon {
+    width: 14px;
+    height: 14px;
+  }
+
+  &:focus-visible {
+    @include m.focus-ring(v.$a11y-primary);
+  }
+}
+
+.a11y-panel__reset {
+  @include _panel-action-btn;
+  &:hover {
+    background-color: #fff3cd;
+    color: #856404;
+  }
+}
+
+.a11y-panel__close {
+  @include _panel-action-btn;
+  &:hover {
+    background-color: #fde8e8;
+    color: #dc3545;
+  }
+}
+
+// ── Body ──────────────────────────────────────────────────────────────────────
+.a11y-panel__body {
+  overflow-y: auto;
+  overflow-x: hidden;
+  flex: 1;
+  padding: 14px 14px 8px;
+  scrollbar-width: thin;
+  scrollbar-color: v.$a11y-border transparent;
+
+  &::-webkit-scrollbar {
+    width: 4px;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: v.$a11y-border;
+    border-radius: 4px;
+  }
+}
+
+// ── Footer ────────────────────────────────────────────────────────────────────
+.a11y-panel__footer {
+  padding: 10px 14px 14px;
+  border-top: 1px solid v.$a11y-border;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+
+.a11y-panel__footer-badge {
+  font-family: var(--a11y-font-ui);
+  font-size: 11px;
+  color: v.$a11y-text-muted;
+  background: v.$a11y-bg-hover;
+  border: 1px solid v.$a11y-border;
+  border-radius: 6px;
+  padding: 2px 8px;
+  letter-spacing: 0.4px;
+}

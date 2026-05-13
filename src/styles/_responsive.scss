@@ -1,0 +1,55 @@
+// =============================================================================
+// _responsive.scss — Breakpoints
+// =============================================================================
+
+@use "variables" as v;
+
+@media (max-width: v.$a11y-bp-mobile) {
+  // Panel fills viewport width on small screens
+  .a11y-panel--bottom-right,
+  .a11y-panel--bottom-left,
+  .a11y-panel--top-right,
+  .a11y-panel--top-left {
+    left: 16px !important;
+    right: 16px !important;
+    width: auto !important;
+  }
+
+  .a11y-panel--bottom-right,
+  .a11y-panel--bottom-left {
+    bottom: 84px !important;
+  }
+
+  .a11y-panel--top-right,
+  .a11y-panel--top-left {
+    top: 84px !important;
+  }
+
+  // FAB slightly smaller
+  .a11y-fab {
+    width: 48px;
+    height: 48px;
+
+    &--bottom-right {
+      bottom: 20px;
+      right: 20px;
+    }
+    &--bottom-left {
+      bottom: 20px;
+      left: 20px;
+    }
+    &--top-right {
+      top: 20px;
+      right: 20px;
+    }
+    &--top-left {
+      top: 20px;
+      left: 20px;
+    }
+  }
+
+  // TTS prompt full-width
+  .a11y-tts-prompt {
+    max-width: 100%;
+  }
+}

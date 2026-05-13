@@ -1,0 +1,14 @@
+// =============================================================================
+// _print.scss — Print media
+// Hide all widget chrome when printing.
+// =============================================================================
+
+@media print {
+  .a11y-fab,
+  .a11y-panel,
+  .a11y-skip-link,
+  .a11y-reading-guide,
+  .a11y-tts-prompt {
+    display: none !important;
+  }
+}

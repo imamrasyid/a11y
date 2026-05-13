@@ -1,0 +1,111 @@
+// =============================================================================
+// _tts.scss — Text-to-Speech UI
+// Element highlight, word highlight, permission prompt
+// =============================================================================
+
+@use "variables" as v;
+@use "mixins" as m;
+
+// ── Element-level highlight (current paragraph being spoken) ──────────────────
+.a11y-tts-highlight {
+  background-color: rgba(v.$a11y-primary, 0.1) !important;
+  border-radius: 3px;
+  outline: 1px solid rgba(v.$a11y-primary, 0.25);
+  transition: background-color 0.15s ease;
+}
+
+// ── Word-level highlight — CSS Custom Highlights API (Chrome 105+, Safari 17.2+)
+::highlight(a11y-tts-word) {
+  background-color: rgba(v.$a11y-primary, 0.35);
+  color: inherit;
+}
+
+// ── Word-level highlight — <mark> fallback ────────────────────────────────────
+.a11y-tts-word-mark {
+  background-color: rgba(v.$a11y-primary, 0.35);
+  color: inherit;
+  border-radius: 2px;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+}
+
+// ── Permission prompt ─────────────────────────────────────────────────────────
+.a11y-tts-prompt {
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%) translateY(100%);
+  z-index: calc(#{v.$a11y-z} + 5);
+  width: 100%;
+  max-width: 480px;
+  background-color: v.$a11y-bg;
+  border: 1px solid v.$a11y-border;
+  border-bottom: none;
+  border-radius: v.$a11y-radius v.$a11y-radius 0 0;
+  box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.12);
+  padding: 20px 20px 24px;
+  font-family: var(--a11y-font-ui);
+  color: v.$a11y-text;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+  &.a11y-tts-prompt--visible {
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+.a11y-tts-prompt__text {
+  font-size: 13px;
+  line-height: 1.6;
+  margin-bottom: 16px;
+  color: v.$a11y-text;
+
+  strong {
+    display: block;
+    font-size: 14px;
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+}
+
+.a11y-tts-prompt__actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.a11y-tts-prompt__btn {
+  padding: 8px 20px;
+  border-radius: v.$a11y-radius-btn;
+  font-family: var(--a11y-font-ui);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: v.$a11y-transition;
+  outline: none;
+
+  &:focus-visible {
+    @include m.focus-ring(v.$a11y-primary);
+  }
+
+  &--deny {
+    background: none;
+    border: 1.5px solid v.$a11y-border;
+    color: v.$a11y-text-muted;
+
+    &:hover {
+      border-color: #dc3545;
+      color: #dc3545;
+    }
+  }
+
+  &--allow {
+    background-color: v.$a11y-primary;
+    color: #fff;
+
+    &:hover {
+      background-color: v.$a11y-primary-dark;
+    }
+  }
+}

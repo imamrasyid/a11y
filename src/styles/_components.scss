@@ -1,0 +1,220 @@
+// =============================================================================
+// _components.scss — Panel UI components
+// Section, divider, option button, toggle row, text size controls
+// =============================================================================
+
+@use "variables" as v;
+@use "mixins" as m;
+
+// ── Section ───────────────────────────────────────────────────────────────────
+.a11y-section {
+  margin-bottom: 14px;
+}
+
+.a11y-section__label {
+  font-family: var(--a11y-font-ui);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: v.$a11y-text-muted;
+  margin-bottom: 8px;
+  padding: 0 2px;
+}
+
+.a11y-section__grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+
+  &--2 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.a11y-section__list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+// ── Divider ───────────────────────────────────────────────────────────────────
+.a11y-divider {
+  height: 1px;
+  background-color: v.$a11y-border;
+  margin: 4px 0 14px;
+}
+
+// ── Option button (contrast, cursor) ─────────────────────────────────────────
+.a11y-opt {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 10px 6px;
+  min-height: 68px;
+  background-color: v.$a11y-bg;
+  border: 1.5px solid v.$a11y-border;
+  border-radius: v.$a11y-radius-btn;
+  cursor: pointer;
+  transition: v.$a11y-transition;
+  font-family: var(--a11y-font-ui);
+  font-size: 11px;
+  font-weight: 600;
+  color: v.$a11y-text;
+  text-align: center;
+  line-height: 1.3;
+  outline: none;
+
+  &:hover {
+    background-color: v.$a11y-bg-hover;
+    border-color: v.$a11y-primary;
+    color: v.$a11y-primary;
+  }
+
+  &:focus-visible {
+    @include m.focus-ring(v.$a11y-primary);
+  }
+
+  &.a11y-opt--active {
+    background-color: v.$a11y-active-bg;
+    border-color: v.$a11y-active-bg;
+    color: v.$a11y-active-text;
+  }
+}
+
+.a11y-opt__icon {
+  font-size: 18px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  .a11y-icon {
+    width: 20px;
+    height: 20px;
+  }
+}
+
+.a11y-opt__label {
+  font-size: 10.5px;
+  line-height: 1.3;
+}
+
+// ── Toggle row ────────────────────────────────────────────────────────────────
+.a11y-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 9px 12px;
+  gap: 10px;
+  width: 100%;
+  text-align: left;
+  background-color: v.$a11y-bg;
+  border: 1.5px solid v.$a11y-border;
+  border-radius: v.$a11y-radius-btn;
+  cursor: pointer;
+  transition: v.$a11y-transition;
+  color: v.$a11y-text;
+  outline: none;
+
+  &:hover {
+    background-color: v.$a11y-bg-hover;
+    border-color: v.$a11y-primary;
+  }
+
+  &:focus-visible {
+    @include m.focus-ring(v.$a11y-primary);
+  }
+
+  &.a11y-toggle-row--active {
+    background-color: v.$a11y-active-bg;
+    border-color: v.$a11y-active-bg;
+    color: v.$a11y-active-text;
+
+    .a11y-toggle-row__switch {
+      background-color: rgba(#fff, 0.35);
+
+      &::after {
+        transform: translateX(14px);
+      }
+    }
+  }
+}
+
+.a11y-toggle-row__left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--a11y-font-ui);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: inherit;
+}
+
+.a11y-toggle-row__icon {
+  width: 20px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  .a11y-icon {
+    width: 16px;
+    height: 16px;
+  }
+}
+
+.a11y-toggle-row__switch {
+  @include m.toggle-switch-track;
+}
+
+// ── Text size controls ────────────────────────────────────────────────────────
+.a11y-textsize {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background-color: v.$a11y-bg;
+  border: 1.5px solid v.$a11y-border;
+  border-radius: v.$a11y-radius-btn;
+}
+
+.a11y-textsize__btn {
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  border-radius: 8px;
+  border: 1.5px solid v.$a11y-border;
+  background: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--a11y-font-ui);
+  font-size: 16px;
+  font-weight: 700;
+  color: v.$a11y-text;
+  transition: v.$a11y-transition;
+  outline: none;
+
+  &:hover {
+    background-color: v.$a11y-primary;
+    border-color: v.$a11y-primary;
+    color: #fff;
+  }
+
+  &:focus-visible {
+    @include m.focus-ring(v.$a11y-primary);
+  }
+}
+
+.a11y-textsize__display {
+  flex: 1;
+  text-align: center;
+  font-family: var(--a11y-font-ui);
+  font-size: 12px;
+  font-weight: 700;
+  color: v.$a11y-text;
+}

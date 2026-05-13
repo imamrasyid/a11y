@@ -1,0 +1,61 @@
+{
+  "name": "@a11y-widget/core",
+  "version": "1.0.0",
+  "description": "Modular, framework-agnostic accessibility widget — WCAG 2.1 AA",
+  "author": "",
+  "license": "MIT",
+  "type": "module",
+  "main": "dist/a11y-widget.cjs.js",
+  "module": "dist/a11y-widget.esm.js",
+  "browser": "dist/a11y-widget.umd.js",
+  "types": "types/index.d.ts",
+  "style": "dist/a11y-widget.css",
+  "sass": "src/styles/index.scss",
+  "exports": {
+    ".": {
+      "import": "./dist/a11y-widget.esm.js",
+      "require": "./dist/a11y-widget.cjs.js"
+    },
+    "./css": "./dist/a11y-widget.css",
+    "./dist/a11y-widget.css": "./dist/a11y-widget.css",
+    "./scss": "./src/styles/index.scss",
+    "./src/styles/index.scss": "./src/styles/index.scss"
+  },
+  "files": [
+    "dist",
+    "types",
+    "src"
+  ],
+  "scripts": {
+    "build:css": "sass src/styles/index.scss dist/a11y-widget.css --style=compressed --no-source-map",
+    "build:css:dev": "sass src/styles/index.scss dist/a11y-widget.css --style=expanded --source-map",
+    "build:js": "rollup -c",
+    "build": "npm run build:css && npm run build:js",
+    "build:watch": "npm run build:css:dev && rollup -c --watch",
+    "lint": "eslint src --ext .js",
+    "prepublishOnly": "npm run build"
+  },
+  "devDependencies": {
+    "@rollup/plugin-node-resolve": "^15.2.3",
+    "@rollup/plugin-terser": "^1.0.0",
+    "eslint": "^8.57.0",
+    "rollup": "^4.18.0",
+    "rollup-plugin-copy": "^3.5.0",
+    "sass": "^1.77.0"
+  },
+  "keywords": [
+    "accessibility",
+    "a11y",
+    "wcag",
+    "widget",
+    "tts",
+    "screen-reader",
+    "contrast",
+    "font-size",
+    "scss"
+  ],
+  "repository": {
+    "type": "git",
+    "url": ""
+  }
+}

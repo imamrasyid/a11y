@@ -1,0 +1,94 @@
+// =============================================================================
+// _variables.scss — Design tokens
+//
+// All $variables use !default so consumers can override before @use:
+//
+//   // In your own SCSS:
+//   $a11y-primary: #7c3aed;
+//   @use '@a11y-widget/core/scss' as *;
+//
+// Tokens are also exported as CSS custom properties on :root so JS and
+// plain-CSS consumers can read/override them at runtime.
+// =============================================================================
+
+// ── Brand colours ─────────────────────────────────────────────────────────────
+$a11y-primary: #0d6efd !default;
+$a11y-primary-dark: #0a58ca !default;
+
+// ── Surface ───────────────────────────────────────────────────────────────────
+$a11y-bg: #ffffff !default;
+$a11y-bg-hover: #f0f4ff !default;
+$a11y-border: #e2e8f0 !default;
+
+// ── Text ──────────────────────────────────────────────────────────────────────
+$a11y-text: #1a1a2e !default;
+$a11y-text-muted: #6c757d !default;
+
+// ── Active state ──────────────────────────────────────────────────────────────
+$a11y-active-bg: $a11y-primary !default;
+$a11y-active-text: #ffffff !default;
+
+// ── Elevation ─────────────────────────────────────────────────────────────────
+$a11y-shadow: 0 8px 32px rgba(0, 0, 0, 0.14) !default;
+$a11y-shadow-btn: 0 2px 8px rgba(13, 110, 253, 0.25) !default;
+
+// ── Shape ─────────────────────────────────────────────────────────────────────
+$a11y-radius: 14px !default;
+$a11y-radius-btn: 10px !default;
+
+// ── Motion ────────────────────────────────────────────────────────────────────
+$a11y-transition: all 0.2s ease !default;
+
+// ── Layout ────────────────────────────────────────────────────────────────────
+$a11y-panel-width: 340px !default;
+$a11y-z: 999999 !default;
+
+// ── Typography ────────────────────────────────────────────────────────────────
+// These are plain font-family stacks — no var() here so they work at compile time.
+// The CSS custom properties below reference them so host-app overrides still work
+// at runtime via --fontFamily / --fontFamily2.
+$a11y-font-ui:
+  system-ui,
+  -apple-system,
+  sans-serif !default;
+$a11y-font-heading:
+  system-ui,
+  -apple-system,
+  sans-serif !default;
+
+// ── Dark mode surface overrides ───────────────────────────────────────────────
+$a11y-dark-bg: #1e1e2e !default;
+$a11y-dark-bg-hover: #2a2a3e !default;
+$a11y-dark-border: #3a3a4e !default;
+$a11y-dark-text: #e0e0f0 !default;
+$a11y-dark-text-muted: #9090a0 !default;
+
+// ── Breakpoints ───────────────────────────────────────────────────────────────
+$a11y-bp-mobile: 480px !default;
+
+// =============================================================================
+// CSS custom properties — exported to :root
+// Uses var(--fontFamily2, $fallback) so host-app font vars take precedence
+// at runtime while the SCSS fallback is used at compile time.
+// =============================================================================
+:root {
+  --a11y-primary: #{$a11y-primary};
+  --a11y-primary-dark: #{$a11y-primary-dark};
+  --a11y-bg: #{$a11y-bg};
+  --a11y-bg-hover: #{$a11y-bg-hover};
+  --a11y-border: #{$a11y-border};
+  --a11y-text: #{$a11y-text};
+  --a11y-text-muted: #{$a11y-text-muted};
+  --a11y-active-bg: #{$a11y-active-bg};
+  --a11y-active-text: #{$a11y-active-text};
+  --a11y-shadow: #{$a11y-shadow};
+  --a11y-shadow-btn: #{$a11y-shadow-btn};
+  --a11y-radius: #{$a11y-radius};
+  --a11y-radius-btn: #{$a11y-radius-btn};
+  --a11y-transition: #{$a11y-transition};
+  --a11y-panel-width: #{$a11y-panel-width};
+  --a11y-z: #{$a11y-z};
+  // Font vars: host-app custom properties take precedence at runtime
+  --a11y-font-ui: var(--fontFamily2, #{$a11y-font-ui});
+  --a11y-font-heading: var(--fontFamily, #{$a11y-font-heading});
+}
