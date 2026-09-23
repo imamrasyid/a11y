@@ -8,6 +8,11 @@ Supports contrast modes, text scaling, font/spacing controls, TTS (Text-to-Speec
 
 ## Install
 
+> **Belum dipublish.** Paket ini belum ada di registry npm — scope `a11y-widget`
+> belum diklaim, jadi tautan `npm install` dan CDN di bawah baru akan hidup setelah
+> org/slug final. Sampai saat itu, pakai hasil build lokal: `npm run build` lalu
+> salin `dist/` ke proyekmu (lihat *Plain HTML*).
+
 ```bash
 npm install @a11y-widget/core
 # or
@@ -19,9 +24,9 @@ Or via CDN (UMD — no bundler needed):
 ```html
 <link
   rel="stylesheet"
-  href="https://unpkg.com/@a11y-widget/core/dist/a11y-widget.css"
+  href="dist/a11y-widget.css"
 />
-<script src="https://unpkg.com/@a11y-widget/core/dist/a11y-widget.umd.min.js"></script>
+<script src="dist/a11y-widget.umd.min.js"></script>
 ```
 
 ---
