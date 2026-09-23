@@ -29,6 +29,17 @@ versi mengikuti [Semantic Versioning](https://semver.org/lang/id/).
   dan subpath `./dist/*` + `./package.json`.
 - `LICENSE` (MIT), berkas ini, dan `.editorconfig`.
 
+- Opsi `init({ migrateFrom: ['kebumen_a11y'] })`: preferensi yang disimpan build
+  lama (atau widget berkas tunggal sebelum paket ini) dipindah ke `storageKey`
+  sekali, lalu kunci lamanya dihapus. Kalau `storageKey` sudah berisi data,
+  migrasi dilewati dan kunci lama dibiarkan utuh.
+- `state.animationsExplicit` ikut dipersist sehingga pilihan "animasi menyala
+  melawan `prefers-reduced-motion`" bertahan setelah reload (temuan #4).
+- `sanitizeState()` + `loadStoredPatch()`: payload dari storage disaring — kunci
+  tak dikenal dan nilai di luar daftar yang sah (mis. `contrast: 'neon'`) tidak
+  lagi bisa menyentuh DOM, dan "belum pernah memilih" kini bisa dibedakan dari
+  "memilih nilai default".
+
 ### Diperbaiki
 
 - `npm run lint` gagal total: `.eslintrc.js` memakai `module.exports` di paket
@@ -48,6 +59,23 @@ versi mengikuti [Semantic Versioning](https://semver.org/lang/id/).
   `$a11y-dark-bg-hover`). axe-core kini nol pelanggaran pada panel.
 
 ### Diubah
+
+- Pengumuman screen reader memakai label yang terlihat di panel, bukan kunci
+  state mentah: `"Kontras: Terbalik"` menggantikan `"Kontras: reverse"`,
+  `"Sembunyikan gambar: aktif"` menggantikan `"hideImages: aktif"`.
+- `options.defaults` tidak lagi menimpa preferensi yang sudah tersimpan.
+  Sebelumnya pilihan pengunjung hilang setiap kali host mengubah nilai default.
+- `destroy()` tidak lagi mengosongkan seluruh event bus: hanya langganan
+  internal (termasuk opsi `onStateChange`) yang dilepas. Listener yang host
+  pasang lewat `on()` tetap hidup dan menjadi tanggung jawab host (`off()`).
+- `reset()` menghapus isi storage alih-alih menulis state default, sehingga
+  kunjungan berikutnya benar-benar mulai bersih.
+- `skipLink` melepas `id` yang ia suntikkan ke elemen utama host saat
+  `destroy()`; kalau tidak ada elemen target yang bisa dituju, tautan skip tidak
+  dibuat sama sekali (sebelumnya menunjuk ke `#a11y-main-content` yang tidak
+  ada).
+- `applyAnimations(enabled, explicit)` kini satu-satunya jalur flag eksplisit;
+  `setUserExplicit()` dihapus dan `loadState()` diganti `loadStoredPatch()`.
 
 - `playwright.config.js`: satu worker dan retries di CI setelah satu uji
   keyboard terbukti flaky saat berjalan paralel.

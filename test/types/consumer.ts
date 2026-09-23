@@ -24,6 +24,7 @@ A11yWidget.init();
 
 const options: A11yWidgetOptions = {
     storageKey: 'my_app_a11y',
+    migrateFrom: ['kebumen_a11y'],
     storage: {
         getItem: () => null,
         setItem: () => undefined,

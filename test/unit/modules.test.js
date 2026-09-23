@@ -12,7 +12,7 @@ import {
 } from '../../src/modules/highlights.js';
 import { applyHideImages, applyImgCaptions, destroyImages } from '../../src/modules/images.js';
 import {
-    applyAnimations, resetAnimations, setUserExplicit, destroyAnimations,
+    applyAnimations, resetAnimations, destroyAnimations,
 } from '../../src/modules/animations.js';
 import { applyReadingGuide, destroyReadingGuide } from '../../src/modules/readingGuide.js';
 import { mountAnnouncer, announce, unmountAnnouncer } from '../../src/core/announcer.js';
@@ -144,18 +144,26 @@ describe('images', function () {
 describe('animations', function () {
     it('leaves the attribute off until the user explicitly chooses', function () {
         resetAnimations();
-        applyAnimations(true);
+        applyAnimations(true, false);
         expect(html().hasAttribute('data-a11y-animations')).toBe(false);
     });
 
     it('writes "on" only for an explicit enable, and "off" whenever disabled', function () {
-        setUserExplicit(true);
-        applyAnimations(true);
+        applyAnimations(true, true);
         expect(html().getAttribute('data-a11y-animations')).toBe('on');
-        applyAnimations(false);
+        applyAnimations(false, true);
         expect(html().getAttribute('data-a11y-animations')).toBe('off');
         destroyAnimations();
         expect(html().hasAttribute('data-a11y-animations')).toBe(false);
+    });
+
+    it('remembers the explicit choice across calls that omit the flag', function () {
+        applyAnimations(true, true);
+        applyAnimations(false);
+        expect(html().getAttribute('data-a11y-animations')).toBe('off');
+        applyAnimations(true);
+        expect(html().getAttribute('data-a11y-animations')).toBe('on');
+        resetAnimations();
     });
 });
 

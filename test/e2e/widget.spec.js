@@ -53,17 +53,20 @@ test.describe('state reaches the DOM', function () {
         await expect(page.locator('.a11y-panel__body')).toBeInViewport();
     });
 
-    test('announces a setting change to assistive technology', async function ({ page }) {
+    test('announces a setting change with the label the panel shows', async function ({ page }) {
         await page.click('#a11yFab');
         await page.click('[data-a11y-action="toggle"][data-a11y-key="hideImages"]');
-        await expect(page.locator('.a11y-live-region')).toHaveText(/hideImages/);
+        await expect(page.locator('.a11y-live-region')).toHaveText('Sembunyikan gambar: aktif');
     });
 
     test('destroy() leaves no trace', async function ({ page }) {
+        await page.click('#a11yFab');
+        await expect(page.locator('main')).toHaveAttribute('id', 'a11y-main-content');
         await page.evaluate('A11yWidget.destroy()');
         expect(await page.evaluate(
             'document.querySelectorAll("#a11yFab, #a11yPanel, .a11y-live-region, .a11y-skip-link, .a11y-reading-guide, style[id^=\\"a11y\\"]").length',
         )).toBe(0);
+        expect(await page.evaluate('document.querySelector("main").hasAttribute("id")')).toBe(false);
         expect(await page.evaluate(
             '[...document.documentElement.attributes].filter(function (a) { return a.name.indexOf("data-a11y-") === 0; }).length',
         )).toBe(0);

@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import {
     DEFAULTS, createDefaultState, mergeState, resetModuleState,
-    serializeState, deserializeState, saveState, loadState,
+    serializeState, deserializeState, sanitizeState, saveState,
+    loadStoredPatch, migrateState,
 } from '../../src/core/state.js';
 import { createNoopAdapter, createLocalStorageAdapter } from '../../src/core/storage.js';
 
@@ -72,10 +73,106 @@ describe('serialization', function () {
         const state = mergeState(createDefaultState(), { textScale: 130, hideImages: true });
         const adapter = createLocalStorageAdapter();
         saveState(state, adapter, 'unit_test');
-        expect(loadState(adapter, 'unit_test')).toMatchObject({ textScale: 130, hideImages: true });
+        expect(loadStoredPatch(adapter, 'unit_test')).toMatchObject({ textScale: 130, hideImages: true });
     });
 
-    it('loads defaults when nothing was stored', function () {
-        expect(loadState(createNoopAdapter(), 'missing').textScale).toBe(100);
+    it('reports nothing stored as null, not as defaults', function () {
+        expect(loadStoredPatch(createNoopAdapter(), 'missing')).toBeNull();
+    });
+
+    it('persists the explicit animations choice', function () {
+        const adapter = createLocalStorageAdapter();
+        saveState(mergeState(createDefaultState(), { animations: true, animationsExplicit: true }), adapter, 'unit_test');
+        expect(loadStoredPatch(adapter, 'unit_test').animationsExplicit).toBe(true);
+    });
+
+    it('ignores a payload it cannot parse', function () {
+        const adapter = {
+            getItem: function () { return '}}broken'; },
+            setItem: function () { /* noop */ },
+            removeItem: function () { /* noop */ },
+        };
+        expect(loadStoredPatch(adapter, 'unit_test')).toBeNull();
+    });
+});
+
+describe('sanitizeState', function () {
+    it('drops keys this version does not know', function () {
+        const clean = sanitizeState({ contrast: 'bright, tapi salah', buatan: 'x' });
+        expect(clean).not.toHaveProperty('buatan');
+    });
+
+    it('drops out-of-range enum values instead of trusting storage', function () {
+        expect(sanitizeState({ contrast: 'neon' })).toEqual({});
+        expect(sanitizeState({ cursor: '<script>' })).toEqual({});
+        expect(sanitizeState({ hideImages: 'yes' })).toEqual({});
+        expect(sanitizeState({ textScale: 'besar' })).toEqual({});
+    });
+
+    it('keeps values that are valid', function () {
+        expect(sanitizeState({ contrast: 'reverse', textScale: 150, keyboard: true }))
+            .toEqual({ contrast: 'reverse', textScale: 150, keyboard: true });
+    });
+
+    it('keeps only the recognised tts subkeys', function () {
+        const clean = sanitizeState({ tts: { enabled: false, rate: 1.4, voice: { name: 'x' }, bogus: 1 } });
+        expect(clean.tts).toEqual({ enabled: false, rate: 1.4 });
+    });
+
+    it('tolerates non-object payloads', function () {
+        expect(sanitizeState(null)).toEqual({});
+        expect(sanitizeState(['contrast'])).toEqual({});
+        expect(sanitizeState('kontras')).toEqual({});
+    });
+});
+
+describe('migrateState', function () {
+    function memStore() {
+        const data = {};
+        return {
+            getItem: function (k) { return Object.prototype.hasOwnProperty.call(data, k) ? data[k] : null; },
+            setItem: function (k, v) { data[k] = v; },
+            removeItem: function (k) { delete data[k]; },
+            data: data,
+        };
+    }
+
+    it('copies a legacy payload onto the current key and deletes the old one', function () {
+        const store = memStore();
+        store.setItem('kebumen_a11y', JSON.stringify({ contrast: 'grayscale', textScale: 120 }));
+
+        const migrated = migrateState(store, 'a11y_widget', ['kebumen_a11y']);
+
+        expect(migrated).toMatchObject({ contrast: 'grayscale', textScale: 120 });
+        expect(store.data.kebumen_a11y).toBeUndefined();
+        expect(JSON.parse(store.data.a11y_widget)).toMatchObject({ contrast: 'grayscale', textScale: 120 });
+    });
+
+    it('treats a legacy animations value as an explicit choice', function () {
+        const store = memStore();
+        store.setItem('legacy', JSON.stringify({ animations: true }));
+        expect(migrateState(store, 'now', ['legacy']).animationsExplicit).toBe(true);
+    });
+
+    it('never overwrites a payload that already exists', function () {
+        const store = memStore();
+        store.setItem('legacy', JSON.stringify({ contrast: 'grayscale' }));
+        store.setItem('now', JSON.stringify({ contrast: 'bright' }));
+
+        expect(migrateState(store, 'now', ['legacy'])).toBeNull();
+        expect(store.data.legacy).toBeTruthy();
+        expect(JSON.parse(store.data.now).contrast).toBe('bright');
+    });
+
+    it('returns null when no legacy key holds anything usable', function () {
+        const store = memStore();
+        store.setItem('legacy', 'bukan json');
+        expect(migrateState(store, 'now', ['legacy', 'tidak-ada'])).toBeNull();
+        expect(store.data.now).toBeUndefined();
+    });
+
+    it('does nothing without a legacy key list', function () {
+        expect(migrateState(memStore(), 'now', [])).toBeNull();
+        expect(migrateState(memStore(), 'now', undefined)).toBeNull();
     });
 });

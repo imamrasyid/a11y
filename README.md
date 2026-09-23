@@ -63,6 +63,11 @@ A11yWidget.init({
   // localStorage key for persisting user preferences
   storageKey: "my_app_a11y",
 
+  // Older storage keys to adopt once (e.g. from a previous build of this widget).
+  // The first key holding a payload is copied to `storageKey` and deleted.
+  // Skipped entirely when `storageKey` already has data.
+  migrateFrom: ["kebumen_a11y"],
+
   // Custom storage adapter (must implement getItem/setItem/removeItem)
   storage: sessionStorage,
 
@@ -97,7 +102,9 @@ A11yWidget.init({
     keyboard: true,
   },
 
-  // Override default state values
+  // Starting values for a visitor with no stored preferences. A preference the
+  // visitor has already saved always wins — changing these in a deploy will not
+  // undo what they picked.
   defaults: {
     contrast: "none",
     textScale: 100,
@@ -126,7 +133,9 @@ A11yWidget.init({
 
 ```js
 A11yWidget.init(options); // Initialize the widget
-A11yWidget.destroy(); // Remove widget and clean up all side effects
+// Remove every node, attribute and injected id the widget created. Listeners
+// you registered with on() stay subscribed — remove them with off().
+A11yWidget.destroy();
 ```
 
 ### Panel
@@ -144,10 +153,11 @@ A11yWidget.isOpen(); // → boolean
 // Get a read-only snapshot of the current state
 const state = A11yWidget.getState();
 
-// Merge a partial state update
+// Merge a partial state update (nested keys such as tts merge one level deep)
 A11yWidget.setState({ contrast: "reverse", textScale: 120 });
+A11yWidget.setState({ tts: { rate: 1.4 } }); // keeps tts.enabled as-is
 
-// Reset all settings to defaults
+// Reset all settings to defaults and delete the stored payload
 A11yWidget.reset();
 
 // Reset a single module

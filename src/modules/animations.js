@@ -19,7 +19,8 @@ let userExplicit = false;
 /**
  * Applies the animations setting.
  * @param {boolean} enabled
- * @param {boolean} [explicit] - Pass true when triggered by user interaction.
+ * @param {boolean} explicit - Whether the user ever touched this control
+ *                            (state.animationsExplicit).
  */
 export function applyAnimations(enabled, explicit) {
     const html = document.documentElement;
@@ -51,14 +52,6 @@ export function resetAnimations() {
 /** @returns {boolean} */
 export function isUserExplicit() {
     return userExplicit;
-}
-
-/**
- * Restores the userExplicit flag (used when loading persisted state).
- * @param {boolean} value
- */
-export function setUserExplicit(value) {
-    userExplicit = value;
 }
 
 /**

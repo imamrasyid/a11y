@@ -18,7 +18,7 @@ import { createEventBus } from './core/eventBus.js';
 import { createLocalStorageAdapter, isValidAdapter } from './core/storage.js';
 import {
     createDefaultState, mergeState, resetModuleState,
-    saveState, loadState, DEFAULTS,
+    saveState, loadStoredPatch, migrateState, DEFAULTS,
 } from './core/state.js';
 import { mountAnnouncer, announce, unmountAnnouncer } from './core/announcer.js';
 
@@ -44,8 +44,7 @@ import {
     resetImages, destroyImages,
 } from './modules/images.js';
 import {
-    applyAnimations, resetAnimations,
-    setUserExplicit, destroyAnimations,
+    applyAnimations, resetAnimations, destroyAnimations,
 } from './modules/animations.js';
 import { applyCursor, resetCursor } from './modules/cursor.js';
 import {
@@ -100,7 +99,21 @@ let _options = {};
 /** @type {string} — resolved active language code */
 let _lang = 'id';
 
+/** Subscriptions the widget made for itself; removed on destroy. Host
+ *  listeners registered through on()/off() are never touched. */
+let _internalSubs = [];
+
 const TTS_WELCOME_KEY = 'a11y_tts_welcomed';
+
+function _subscribe(event, handler) {
+    bus.on(event, handler);
+    _internalSubs.push({ event: event, handler: handler });
+}
+
+function _unsubscribeInternal() {
+    _internalSubs.forEach(function (sub) { bus.off(sub.event, sub.handler); });
+    _internalSubs = [];
+}
 
 // ─── Init ────────────────────────────────────────────────────────────────────
 
@@ -115,7 +128,8 @@ const TTS_WELCOME_KEY = 'a11y_tts_welcomed';
  * @param {string|object} [options.lang='id']   Locale code or custom strings object
  * @param {string}  [options.baseLang='id']     Base locale for partial overrides
  * @param {object}  [options.modules]           Per-module enable/disable flags
- * @param {object}  [options.defaults]          Override default state values
+ * @param {object}  [options.defaults]          Values used when the visitor has no stored choice
+ * @param {string[]} [options.migrateFrom]      Legacy storage keys to move onto storageKey
  * @param {boolean} [options.skipLink=true]
  * @param {boolean} [options.welcomeMessage=false]
  * @param {string}  [options.welcomeText]       Custom welcome message text
@@ -145,19 +159,21 @@ function init(options) {
     initI18n(_options.lang || 'id', _options.baseLang);
 
     // ── State ──────────────────────────────────────────────────────────────────
-    _state = loadState(_storage, _storageKey);
-    if (_options.defaults) {
-        _state = mergeState(_state, _options.defaults);
-    }
+    // Preferences written by an older build land on the current key first, so
+    // the read below is the only path that has to know about storage at all.
+    migrateState(_storage, _storageKey, _options.migrateFrom || []);
 
-    // Restore animations explicit flag from persisted state
-    if (_state.animations !== DEFAULTS.animations) {
-        setUserExplicit(true);
-    }
+    // Host defaults sit *under* the visitor's own choices: a stored preference
+    // must survive a reload, and a deploy that changes `defaults` must not
+    // silently overwrite what the visitor picked.
+    _state = mergeState(
+        createDefaultState(_options.defaults),
+        loadStoredPatch(_storage, _storageKey) || {},
+    );
 
     // ── Shorthand callback ─────────────────────────────────────────────────────
     if (typeof _options.onStateChange === 'function') {
-        bus.on('stateChange', _options.onStateChange);
+        _subscribe('stateChange', _options.onStateChange);
     }
 
     // ── DOM ────────────────────────────────────────────────────────────────────
@@ -196,8 +212,9 @@ function init(options) {
 // ─── Destroy ─────────────────────────────────────────────────────────────────
 
 /**
- * Completely removes the widget from the DOM and cleans up all side effects.
- * Safe to call even if not initialized.
+ * Completely removes the widget from the DOM and cleans up its own side
+ * effects. Listeners the host registered with on() stay subscribed — call
+ * off() for those. Safe to call even if not initialized.
  */
 function destroy() {
     if (!_initialized) { return; }
@@ -230,7 +247,7 @@ function destroy() {
     destroyReadingGuide();
 
     bus.emit('destroy');
-    bus.clear();
+    _unsubscribeInternal();
 
     // Full reset of internal state so re-init works cleanly
     _state = createDefaultState();
@@ -289,17 +306,17 @@ function setState(partial) {
 }
 
 /**
- * Resets all settings to defaults.
+ * Resets every setting to its default and forgets the stored payload, so the
+ * next visit starts clean instead of reloading the choice the visitor erased.
  */
 function reset() {
     ttsCancel();
     removePrompt();
-    setUserExplicit(false);
 
     _state = createDefaultState(_options.defaults || {});
     applyAllModules(_state);
     syncUI(_state);
-    saveState(_state, _storage, _storageKey);
+    _storage.removeItem(_storageKey);
 
     announce(t('announceReset'));
     bus.emit('reset', getState());
@@ -401,6 +418,44 @@ const tts = {
 
 // ─── Panel action handler ────────────────────────────────────────────────────
 
+// Screen-reader output must read like the panel, not like the state object:
+// "Kontras: Terbalik", not "Kontras: reverse". Both maps reuse the labels the
+// panel already renders, so no locale can drift out of sync.
+const VALUE_LABEL_KEYS = {
+    contrast: {
+        none: 'contrastNone',
+        bright: 'contrastBright',
+        reverse: 'contrastReverse',
+        grayscale: 'contrastGrayscale',
+    },
+    cursor: {
+        default: 'cursorDefault',
+        white: 'cursorWhite',
+        black: 'cursorBlack',
+    },
+};
+
+const TOGGLE_LABEL_KEYS = {
+    underlineLinks: 'underlineLinks',
+    underlineHeaders: 'underlineHeaders',
+    imgTitles: 'imgTitles',
+    highlightFocus: 'highlightFocus',
+    hideImages: 'hideImages',
+    readingGuide: 'readingGuide',
+    keyboard: 'keyboard',
+};
+
+/**
+ * @param {string} group 'contrast' | 'cursor'
+ * @param {string} value
+ * @returns {string}
+ */
+function _valueLabel(group, value) {
+    const map = VALUE_LABEL_KEYS[group];
+    const key = map && map[value];
+    return key ? t(key) : String(value);
+}
+
 /**
  * Handles all actions dispatched from the panel UI.
  * @param {string} action
@@ -413,12 +468,12 @@ function handlePanelAction(action, data) {
     switch (action) {
         case 'contrast':
             setState({ contrast: data });
-            announce(t('announceContrast') + ': ' + data);
+            announce(t('announceContrast') + ': ' + _valueLabel('contrast', data));
             break;
 
         case 'cursor':
             setState({ cursor: data });
-            announce(t('announceCursor') + ': ' + data);
+            announce(t('announceCursor') + ': ' + _valueLabel('cursor', data));
             break;
 
         case 'font':
@@ -437,17 +492,20 @@ function handlePanelAction(action, data) {
             break;
 
         case 'animations':
-            setUserExplicit(true);
-            setState({ animations: !s.animations });
+            // Persisted: the choice has to outlive the reload, otherwise the
+            // next page view falls back to prefers-reduced-motion again.
+            setState({ animations: !s.animations, animationsExplicit: true });
             announce(s.animations ? t('announceAnimationsOff') : t('announceAnimationsOn'));
             break;
 
         case 'toggle': {
             const key = data;
             if (key in s) {
-                setState({ [key]: !s[key] });
-                const label = s[key] ? t('announceInactive') : t('announceActive');
-                announce(key + ': ' + label);
+                const next = !s[key];
+                setState({ [key]: next });
+                const labelKey = TOGGLE_LABEL_KEYS[key];
+                announce((labelKey ? t(labelKey) : key)
+                    + ': ' + t(next ? 'announceActive' : 'announceInactive'));
             }
             break;
         }
@@ -503,7 +561,7 @@ function applyAllModules(s) {
     if (mods.imgTitles !== false) { applyImgCaptions(s.imgTitles); }
     if (mods.highlightFocus !== false) { applyHighlightFocus(s.highlightFocus); }
     if (mods.hideImages !== false) { applyHideImages(s.hideImages); }
-    if (mods.animations !== false) { applyAnimations(s.animations); }
+    if (mods.animations !== false) { applyAnimations(s.animations, s.animationsExplicit); }
     if (mods.cursor !== false) { applyCursor(s.cursor); }
     if (mods.readingGuide !== false) { applyReadingGuide(s.readingGuide); }
     if (mods.keyboard !== false) { applyKeyboardNav(s.keyboard); }

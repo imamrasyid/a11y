@@ -59,10 +59,47 @@ describe('init', function () {
         A11yWidget.destroy();
     });
 
-    it('applies defaults overrides on top of stored values', function () {
+    it('keeps a stored choice above the host defaults', function () {
         localStorage.setItem(KEY, JSON.stringify({ font: 'readable' }));
         A11yWidget.init({ storageKey: KEY, defaults: { font: 'default' } });
-        expect(A11yWidget.getState().font).toBe('default');
+        expect(A11yWidget.getState().font).toBe('readable');
+        A11yWidget.destroy();
+    });
+
+    it('uses host defaults only when the visitor has no stored choice', function () {
+        A11yWidget.init({ storageKey: KEY, defaults: { font: 'readable' } });
+        expect(A11yWidget.getState().font).toBe('readable');
+        expect(html().getAttribute('data-a11y-font')).toBe('readable');
+        A11yWidget.destroy();
+    });
+
+    it('adopts preferences left behind by an older build', function () {
+        localStorage.setItem('kebumen_a11y', JSON.stringify({ contrast: 'grayscale', textScale: 120, animations: true }));
+        A11yWidget.init({ storageKey: KEY, migrateFrom: ['kebumen_a11y'] });
+
+        expect(A11yWidget.getState()).toMatchObject({ contrast: 'grayscale', textScale: 120, animationsExplicit: true });
+        expect(localStorage.getItem('kebumen_a11y')).toBeNull();
+        expect(JSON.parse(localStorage.getItem(KEY))).toMatchObject({ contrast: 'grayscale' });
+        A11yWidget.destroy();
+    });
+
+    it('keeps the current payload when a legacy key also exists', function () {
+        localStorage.setItem('kebumen_a11y', JSON.stringify({ contrast: 'grayscale' }));
+        localStorage.setItem(KEY, JSON.stringify({ contrast: 'bright' }));
+        A11yWidget.init({ storageKey: KEY, migrateFrom: ['kebumen_a11y'] });
+
+        expect(A11yWidget.getState().contrast).toBe('bright');
+        expect(localStorage.getItem('kebumen_a11y')).toBeTruthy();
+        A11yWidget.destroy();
+    });
+
+    it('ignores values it does not recognise', function () {
+        localStorage.setItem(KEY, JSON.stringify({ contrast: 'neon', textScale: 'besar', buatan: true }));
+        A11yWidget.init({ storageKey: KEY });
+
+        expect(A11yWidget.getState().contrast).toBe('none');
+        expect(html().hasAttribute('data-a11y-contrast')).toBe(false);
+        expect(A11yWidget.getState()).not.toHaveProperty('buatan');
         A11yWidget.destroy();
     });
 
@@ -98,12 +135,21 @@ describe('panel interaction', function () {
         A11yWidget.destroy();
     });
 
-    it('a boolean toggle flips the state and announces it', async function () {
+    it('a boolean toggle flips the state and announces the panel label', async function () {
         click('[data-a11y-action="toggle"][data-a11y-key="keyboard"]');
         expect(A11yWidget.getState().keyboard).toBe(true);
         await new Promise(function (r) { setTimeout(r, 80); });
         expect(document.querySelector('.a11y-live-region').textContent)
-            .toBe('keyboard: ' + id.announceActive);
+            .toBe(id.keyboard + ': ' + id.announceActive);
+        A11yWidget.destroy();
+    });
+
+    it('announces contrast and cursor by their visible names, not state values', async function () {
+        click('[data-a11y-action="contrast"][data-a11y-value="reverse"]');
+        click('[data-a11y-action="cursor"][data-a11y-value="black"]');
+        await new Promise(function (r) { setTimeout(r, 80); });
+        expect(document.querySelector('.a11y-live-region').textContent)
+            .toBe(id.announceCursor + ': ' + id.cursorBlack);
         A11yWidget.destroy();
     });
 
@@ -122,6 +168,35 @@ describe('panel interaction', function () {
         expect(seen).toEqual(['reset']);
         expect(A11yWidget.getState()).toMatchObject({ contrast: 'none', textScale: 100 });
         expect(html().hasAttribute('data-a11y-contrast')).toBe(false);
+        A11yWidget.destroy();
+    });
+
+    it('reset forgets the stored payload so the next visit starts clean', function () {
+        A11yWidget.setState({ contrast: 'bright' });
+        expect(localStorage.getItem(KEY)).toBeTruthy();
+        click('#a11yReset');
+        expect(localStorage.getItem(KEY)).toBeNull();
+        A11yWidget.destroy();
+        A11yWidget.init({ storageKey: KEY });
+        expect(A11yWidget.getState().contrast).toBe('none');
+        A11yWidget.destroy();
+    });
+
+    it('keeps an explicit "animations on" choice across a reload', function () {
+        click('[data-a11y-action="animations"]');
+        expect(A11yWidget.getState()).toMatchObject({ animations: false, animationsExplicit: true });
+        A11yWidget.destroy();
+
+        // Second visit: same stored value as the default, so only the persisted
+        // explicit flag can bring the data attribute back.
+        localStorage.setItem(KEY, JSON.stringify({ animations: true, animationsExplicit: true }));
+        A11yWidget.init({ storageKey: KEY });
+        expect(html().getAttribute('data-a11y-animations')).toBe('on');
+        A11yWidget.destroy();
+
+        localStorage.setItem(KEY, JSON.stringify({ animations: true }));
+        A11yWidget.init({ storageKey: KEY });
+        expect(html().hasAttribute('data-a11y-animations')).toBe(false);
         A11yWidget.destroy();
     });
 
@@ -202,6 +277,24 @@ describe('destroy', function () {
         expect(html().attributes.length).toBe(0);
     });
 
+    it('takes back the target id it gave to the host main element', function () {
+        A11yWidget.init({ storageKey: KEY });
+        const main = document.querySelector('main');
+        expect(main.id).toBe('a11y-main-content');
+        expect(document.querySelector('.a11y-skip-link').getAttribute('href')).toBe('#a11y-main-content');
+
+        A11yWidget.destroy();
+        expect(main.hasAttribute('id')).toBe(false);
+    });
+
+    it('uses an id the host already owns and leaves it in place', function () {
+        document.querySelector('main').id = 'konten';
+        A11yWidget.init({ storageKey: KEY });
+        expect(document.querySelector('.a11y-skip-link').getAttribute('href')).toBe('#konten');
+        A11yWidget.destroy();
+        expect(document.querySelector('main').id).toBe('konten');
+    });
+
     it('is safe to call twice and re-init afterwards works', function () {
         A11yWidget.init({ storageKey: KEY });
         A11yWidget.destroy();
@@ -211,14 +304,26 @@ describe('destroy', function () {
         A11yWidget.destroy();
     });
 
-    it('drops host listeners as it stands today', function () {
+    it('keeps host listeners across a destroy/init cycle', function () {
         A11yWidget.init({ storageKey: KEY });
         let fired = 0;
         A11yWidget.on('stateChange', function () { fired++; });
         A11yWidget.destroy();
         A11yWidget.init({ storageKey: KEY });
         A11yWidget.setState({ font: 'readable' });
-        expect(fired).toBe(0);
+        expect(fired).toBe(1);
+        A11yWidget.destroy();
+    });
+
+    it('drops only the listener it registered for itself', function () {
+        let seen = 0;
+        A11yWidget.init({ storageKey: KEY, onStateChange: function () { seen++; } });
+        A11yWidget.setState({ font: 'readable' });
+        expect(seen).toBe(1);
+        A11yWidget.destroy();
+        A11yWidget.init({ storageKey: KEY });
+        A11yWidget.setState({ font: 'default' });
+        expect(seen).toBe(1);
         A11yWidget.destroy();
     });
 });

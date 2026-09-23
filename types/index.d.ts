@@ -28,6 +28,9 @@ export interface A11yState {
   highlightFocus: boolean;
   hideImages: boolean;
   animations: boolean;
+  /** True once the visitor touched the animations switch — makes
+   *  `animations` override the OS `prefers-reduced-motion` preference. */
+  animationsExplicit: boolean;
   cursor: "default" | "white" | "black";
   readingGuide: boolean;
   keyboard: boolean;
@@ -146,6 +149,10 @@ export type LangOption = LocaleCode | "jv" | (string & {}) | Partial<A11yStrings
 export interface A11yWidgetOptions {
   /** localStorage key for persisting state. Default: 'a11y_widget' */
   storageKey?: string;
+  /** Older storage keys to adopt on this init: the first one holding a payload
+   *  is copied to `storageKey` and removed. Skipped when `storageKey` already
+   *  has data, so a visitor's current choices are never overwritten. */
+  migrateFrom?: string[];
   /** Custom storage adapter (must implement getItem/setItem/removeItem). */
   storage?: StorageAdapter;
   /** DOM element to mount the widget into. Default: document.body */
