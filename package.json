@@ -32,16 +32,42 @@
     "build:js": "rollup -c",
     "build": "npm run build:css && npm run build:js",
     "build:watch": "npm run build:css:dev && rollup -c --watch",
-    "lint": "eslint src --ext .js",
+    "lint": "eslint src test --ext .js",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "test:e2e": "playwright test",
+    "size": "size-limit",
+    "prepack": "npm run build && npm pack --dry-run",
     "prepublishOnly": "npm run build"
   },
+  "size-limit": [
+    {
+      "name": "umd-min-js",
+      "path": "dist/a11y-widget.umd.min.js",
+      "limit": "20 kB"
+    },
+    {
+      "name": "css",
+      "path": "dist/a11y-widget.css",
+      "limit": "8 kB"
+    }
+  ],
   "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
+    "@playwright/test": "^1.63.0",
     "@rollup/plugin-node-resolve": "^15.2.3",
     "@rollup/plugin-terser": "^1.0.0",
+    "@size-limit/file": "^14.0.0",
+    "@vitest/coverage-v8": "^5.0.1",
+    "axe-core": "^4.13.0",
     "eslint": "^8.57.0",
+    "jsdom": "^30.1.1",
     "rollup": "^4.18.0",
     "rollup-plugin-copy": "^3.5.0",
-    "sass": "^1.77.0"
+    "sass": "^1.77.0",
+    "size-limit": "^14.0.0",
+    "vitest": "^5.0.1"
   },
   "keywords": [
     "accessibility",

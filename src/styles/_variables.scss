@@ -22,7 +22,9 @@ $a11y-border: #e2e8f0 !default;
 
 // ── Text ──────────────────────────────────────────────────────────────────────
 $a11y-text: #1a1a2e !default;
-$a11y-text-muted: #6c757d !default;
+// Muted text sits on both $a11y-bg and $a11y-bg-hover — #5c666f keeps >= 4.5:1
+// on the lighter of the two (5.3:1); the previous #6c757d measured 4.26:1 there.
+$a11y-text-muted: #5c666f !default;
 
 // ── Active state ──────────────────────────────────────────────────────────────
 $a11y-active-bg: $a11y-primary !default;
@@ -61,7 +63,7 @@ $a11y-dark-bg: #1e1e2e !default;
 $a11y-dark-bg-hover: #2a2a3e !default;
 $a11y-dark-border: #3a3a4e !default;
 $a11y-dark-text: #e0e0f0 !default;
-$a11y-dark-text-muted: #9090a0 !default;
+$a11y-dark-text-muted: #a6a6bc !default;
 
 // ── Breakpoints ───────────────────────────────────────────────────────────────
 $a11y-bp-mobile: 480px !default;

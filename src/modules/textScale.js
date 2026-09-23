@@ -65,7 +65,12 @@ export function destroyTextScale() {
 // ─── Internal ────────────────────────────────────────────────────────────────
 
 function ensureStyleEl() {
-    if (styleEl) { return; }
+    if (styleEl) {
+        // A host app that rebuilds <head> (SPA navigation, Turbo, a strict style
+        // manager) detaches our tag; writes to a detached node are silently lost.
+        if (!styleEl.isConnected) { document.head.appendChild(styleEl); }
+        return;
+    }
     styleEl = document.createElement('style');
     styleEl.id = 'a11y-text-scale';
     document.head.appendChild(styleEl);

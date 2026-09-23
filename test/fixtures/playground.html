@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>a11y-widget — fixture playground</title>
+  <link rel="stylesheet" href="/dist/a11y-widget.css">
+</head>
+<body>
+  <a href="#beranda" class="host-skip">Skip link milik host, bukan widget</a>
+  <header id="beranda">
+    <nav aria-label="Utama">
+      <ul>
+        <li><a href="/beranda">Beranda</a></li>
+        <li><a href="/profil">Profil Daerah</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <main>
+    <article>
+      <h1>Pos Pelayanan Terpadu membuka layanan baru</h1>
+      <p>Pemerintah Kabupaten membuka layanan_aduan baru untuk warga di 28 kecamatan, dengan target waktu tanggap 1x24 jam.</p>
+      <p>Biaya administrasi sebesar Rp. 25.000 dan berlaku untuk Kab. Kebumen serta DPRD setempat.</p>
+      <ul>
+        <li>Jam pelayanan 08.00 WIB sampai 15.00 WIB</li>
+        <li>Membawa KTP dan fotokopi KK</li>
+      </ul>
+      <h2>Syarat pendaftaran</h2>
+      <p>Setiap pemohon mengisi formulir yang tersedia di loket 3 lantai 2 gedung pelayanan.</p>
+      <table>
+        <caption>Ringkasan layanan</caption>
+        <thead><tr><th>Layanan</th><th>Waktu</th></tr></thead>
+        <tbody><tr><td>Pernikahan</td><td>3 hari kerja</td></tr></tbody>
+      </table>
+      <img src="/test/fixtures/pixel.png" alt="Gedung pelayanan publik dengan antrean warga">
+      <img src="/test/fixtures/pixel.png" alt="">
+      <blockquote>"Kami ingin layanan yang bisa diakses semua orang." kata kepala dinas.</blockquote>
+    </article>
+
+    <section aria-label="Formulir">
+      <form>
+        <label for="nama">Nama lengkap</label>
+        <input id="nama" name="nama" type="text">
+        <label for="kab">Kabupaten</label>
+        <select id="kab" name="kab"><option>Kebumen</option><option>Purworejo</option></select>
+        <button type="submit">Kirim</button>
+      </form>
+      <a href="#" id="dynamic-add">Tambah gambar setelah render</a>
+    </section>
+  </main>
+
+  <footer>
+    <p>&copy; 2026 Situs contoh untuk pengujian widget aksesibilitas.</p>
+  </footer>
+
+  <script src="/dist/a11y-widget.umd.js"></script>
+  <script>
+    window.a11y = A11yWidget;
+    window.a11yReady = new Promise(function (resolve) {
+      window.addEventListener('DOMContentLoaded', function () {
+        A11yWidget.init({ lang: 'id' });
+        resolve(A11yWidget);
+      });
+    });
+    document.getElementById('dynamic-add').addEventListener('click', function (e) {
+      e.preventDefault();
+      var img = document.createElement('img');
+      img.src = '/test/fixtures/pixel.png';
+      img.alt = 'Gambar yang disuntikkan setelah render awal';
+      document.querySelector('article').appendChild(img);
+    });
+  </script>
+</body>
+</html>
