@@ -180,8 +180,18 @@ export interface A11yWidgetOptions {
   position?: "bottom-right" | "bottom-left" | "top-right" | "top-left";
   /** Locale code or custom strings object. Default: 'id' */
   lang?: LangOption;
-  /** Base locale for partial string overrides. Default: 'id' */
+  /** Base locale for partial string overrides, and the locale the panel text
+   *  uses when `lang` has no string pack. Default: 'id' */
   baseLang?: LocaleCode;
+  /** Same job as `baseLang` for hosts that think of it as a fallback rather
+   *  than an override base. `baseLang` wins when both are given. */
+  fallbackLang?: LocaleCode;
+  /** Containers "read page" is allowed to read, most specific first.
+   *  Default: main, article, [role=main], #content, .content, .main-content */
+  contentSelectors?: string[];
+  /** Subtrees "read page" skips inside those containers (navigation, footers,
+   *  the widget's own UI, …). An invalid rule is dropped with a console warning. */
+  excludeSelectors?: string[];
   /** Per-module enable/disable flags. All enabled by default. */
   modules?: ModuleFlags;
   /** Override default state values — applied before stored state and by `reset()`. */
@@ -201,8 +211,9 @@ export interface A11yWidgetOptions {
 export interface ReplacementRule {
   search: RegExp;
   replace: string;
-  /** Language code to apply this rule to, or null for all languages. */
-  lang: string | null;
+  /** Scope this rule to one language; omit (or null) to apply it everywhere.
+   *  Rules for a shipped locale live in that locale's pack, not here. */
+  lang?: string | null;
 }
 
 /** One readable block of page content returned by `getPageContent()`. */
@@ -264,13 +275,14 @@ export interface TTSA11yAPI {
   grantPermission(): void;
   /** Revokes stored TTS permission. */
   revokePermission(): void;
-  /** Adds custom text replacement rules. */
+  /** Adds custom text replacement rules, on top of the universal symbols and
+   *  the rules that belong to the locale being spoken. */
   addReplacements(rules: ReplacementRule[]): void;
-  /** Replaces all text replacement rules. */
+  /** Replaces the host's own replacement rules; built-in and locale rules stay. */
   setReplacements(rules: ReplacementRule[]): void;
-  /** Resets text replacement rules to built-in defaults. */
+  /** Removes every rule added through addReplacements()/setReplacements(). */
   resetReplacements(): void;
-  /** Returns the current replacement rules. */
+  /** Returns the host-added replacement rules. */
   getReplacements(): ReplacementRule[];
 }
 

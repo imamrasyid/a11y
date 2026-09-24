@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { createEventBus } from '../../src/core/eventBus.js';
 import { createNoopAdapter, isValidAdapter } from '../../src/core/storage.js';
-import { initI18n, getStrings, t, getAvailableLocales } from '../../src/i18n/index.js';
+import { initI18n, getStrings, getSpeechRules, t, getAvailableLocales } from '../../src/i18n/index.js';
 import id from '../../src/i18n/id.js';
 import en from '../../src/i18n/en.js';
 
@@ -69,9 +69,31 @@ describe('i18n', function () {
         expect(getStrings()).toBe(en);
     });
 
-    it('falls back silently to Indonesian for an unknown code', function () {
-        initI18n('jv', 'id');
+    it('says so when a code has no string pack, instead of going quiet', function () {
+        const warn = vi.spyOn(console, 'warn').mockImplementation(function () { });
+        const used = initI18n('jv', 'id');
+        expect(used).toBe('id');
         expect(getStrings()).toBe(id);
-        expect(t('panelTitle')).toBe(id.panelTitle);
+        expect(warn).toHaveBeenCalledTimes(1);
+        expect(warn.mock.calls[0][0]).toContain('jv');
+        warn.mockRestore();
+    });
+
+    it('falls back to the locale the host named, not to Indonesian', function () {
+        const warn = vi.spyOn(console, 'warn').mockImplementation(function () { });
+        initI18n('jv', 'en');
+        expect(t('panelTitle')).toBe(en.panelTitle);
+        warn.mockRestore();
+    });
+});
+
+describe('speech rules', function () {
+    it('travel with the locale that needs them', function () {
+        expect(getSpeechRules('id').length).toBeGreaterThan(getSpeechRules('en').length);
+    });
+
+    it('are empty for a language nothing was written for', function () {
+        expect(getSpeechRules('jv')).toEqual([]);
+        expect(getSpeechRules(undefined)).toEqual([]);
     });
 });

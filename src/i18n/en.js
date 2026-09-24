@@ -91,3 +91,15 @@ export default {
     announceInactive: 'off',
     announceReset: 'All accessibility settings have been reset',
 };
+
+/**
+ * Speech rules for this locale. English synthesis voices already pronounce most
+ * abbreviations, and an over-eager list would turn "St. Louis" into "Saint
+ * Louis" — so only the symbols whose spoken form is a word are claimed here.
+ *
+ * @type {Array<{search: RegExp, replace: string}>}
+ */
+export const speechRules = [
+    { search: /&amp;/g, replace: 'and' },
+    { search: /&/g, replace: 'and' },
+];

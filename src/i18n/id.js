@@ -91,3 +91,44 @@ export default {
     announceInactive: 'nonaktif',
     announceReset: 'Semua pengaturan aksesibilitas telah direset',
 };
+
+/**
+ * Speech rules for this locale: what the reader says out loud instead of the
+ * printed form. They live with the locale so a new pack brings its own rules
+ * instead of editing the TTS engine, and so `lang: 'en'` never expands "Rp."
+ * to "Rupiah".
+ *
+ * @type {Array<{search: RegExp, replace: string}>}
+ */
+export const speechRules = [
+    // Read aloud, "&" becomes a word — and that word is different in every
+    // language, so it belongs to the locale pack rather than to a shared list.
+    { search: /&amp;/g, replace: 'dan' },
+    { search: /&/g, replace: 'dan' },
+    { search: /\bKab\.\s*/gi, replace: 'Kabupaten ' },
+    { search: /\bKec\.\s*/gi, replace: 'Kecamatan ' },
+    { search: /\bKel\.\s*/gi, replace: 'Kelurahan ' },
+    { search: /\bDr\.\s*/gi, replace: 'Doktor ' },
+    { search: /\bProf\.\s*/gi, replace: 'Profesor ' },
+    { search: /\bSH\b/gi, replace: 'Sarjana Hukum' },
+    { search: /\bSE\b/gi, replace: 'Sarjana Ekonomi' },
+    { search: /\bST\b/gi, replace: 'Sarjana Teknik' },
+    { search: /\bSIP\b/gi, replace: 'Sarjana Ilmu Pemerintahan' },
+    { search: /\bM\.Si\b/gi, replace: 'Magister Sains' },
+    { search: /\bM\.M\b/gi, replace: 'Magister Manajemen' },
+    { search: /\bPemkab\b/gi, replace: 'Pemerintah Kabupaten' },
+    { search: /\bPemkot\b/gi, replace: 'Pemerintah Kota' },
+    { search: /\bDiskominfo\b/gi, replace: 'Dinas Komunikasi dan Informatika' },
+    { search: /\bBPBD\b/gi, replace: 'Badan Penanggulangan Bencana Daerah' },
+    { search: /\bDPRD\b/gi, replace: 'Dewan Perwakilan Rakyat Daerah' },
+    { search: /\bAPBD\b/gi, replace: 'Anggaran Pendapatan dan Belanja Daerah' },
+    { search: /\bASN\b/gi, replace: 'Aparatur Sipil Negara' },
+    { search: /\bOPD\b/gi, replace: 'Organisasi Perangkat Daerah' },
+    { search: /\bUMKM\b/gi, replace: 'Usaha Mikro Kecil dan Menengah' },
+    { search: /\bRSUD\b/gi, replace: 'Rumah Sakit Umum Daerah' },
+    { search: /\bPKM\b/gi, replace: 'Puskesmas' },
+    { search: /\bWIB\b/gi, replace: 'Waktu Indonesia Barat' },
+    { search: /\bWITA\b/gi, replace: 'Waktu Indonesia Tengah' },
+    { search: /\bWIT\b/gi, replace: 'Waktu Indonesia Timur' },
+    { search: /Rp\.?\s*/g, replace: 'Rupiah ' },
+];

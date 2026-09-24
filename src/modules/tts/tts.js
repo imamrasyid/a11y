@@ -175,31 +175,104 @@ export function isSupported() {
     return typeof window !== 'undefined' && 'speechSynthesis' in window;
 }
 
+/** Generic landmarks a page marks its readable body with. */
+const DEFAULT_CONTENT_SELECTORS = [
+    'main', 'article', '[role=main]', '#content', '.content', '.main-content',
+];
+
+/**
+ * Things that are not the article even inside a content container, plus the
+ * widget's own UI — reading the panel aloud would repeat every label on it.
+ */
+const DEFAULT_EXCLUDE_SELECTORS = [
+    'nav', 'header', 'footer', 'aside',
+    '[role=navigation]', '[role=banner]', '[role=contentinfo]',
+    '#a11yPanel', '.a11y-skip-link', '.a11y-live-region', '.a11y-reading-guide',
+];
+
 /**
  * Extracts readable content from the page as an array of {el, text} chunks.
+ * @param {object} [options]
+ * @param {string[]} [options.contentSelectors] - Containers to read, best first
+ * @param {string[]} [options.excludeSelectors] - Subtrees to skip inside them
  * @returns {Array<{el: Element, text: string}>}
  */
-export function getPageContent() {
-    const selectors = [
-        'main', 'article', '.post-details-article',
-        '.content-area', '#content', '.main-content',
-        '.container',
-    ];
+export function getPageContent(options) {
+    const opts = options || {};
+    const content = opts.contentSelectors || DEFAULT_CONTENT_SELECTORS;
+    const exclude = usableSelector(
+        (opts.excludeSelectors || DEFAULT_EXCLUDE_SELECTORS).join(','),
+        DEFAULT_EXCLUDE_SELECTORS.join(','),
+    );
 
-    let container = null;
-    for (let i = 0; i < selectors.length; i++) {
-        container = document.querySelector(selectors[i]);
-        if (container) { break; }
+    // The first container that actually holds text wins: a site can easily have
+    // an empty <article> wrapper around the real content.
+    const containers = [];
+    content.forEach(function (selector) {
+        containers.push(function () { return queryAll(selector); });
+    });
+    containers.push(function () { return [document.body]; });
+
+    for (let i = 0; i < containers.length; i++) {
+        const found = pickText(containers[i](), exclude);
+        if (found.length) { return found; }
     }
-    if (!container) { container = document.body; }
+    return [];
+}
 
-    const nodes = container.querySelectorAll('h1,h2,h3,h4,h5,h6,p,li,td,blockquote');
-    const result = [];
-    nodes.forEach(function (node) {
-        const txt = (readableText(node) || '').trim();
-        if (txt && txt.length > 2) {
-            result.push({ el: node, text: txt });
+/**
+ * querySelectorAll that tolerates a malformed host selector instead of taking
+ * the whole reader down with it.
+ * @param {string} selector
+ * @returns {Element[]}
+ */
+function queryAll(selector) {
+    try {
+        return Array.prototype.slice.call(document.querySelectorAll(selector));
+    } catch (_) {
+        if (typeof console !== 'undefined' && console.warn) {
+            console.warn('[a11y-widget] Ignoring invalid selector "' + selector + '".');
         }
+        return [];
+    }
+}
+
+/**
+ * Keeps a selector the host wrote only if the browser can parse it; a typo in
+ * one custom selector should cost that rule, not the whole reader.
+ * @param {string} selector
+ * @param {string} fallback
+ * @returns {string}
+ */
+function usableSelector(selector, fallback) {
+    try {
+        document.querySelector(selector);
+        return selector;
+    } catch (_) {
+        if (typeof console !== 'undefined' && console.warn) {
+            console.warn('[a11y-widget] Invalid excludeSelectors — using the default list.');
+        }
+        return fallback;
+    }
+}
+
+/**
+ * Collects readable nodes from the given containers, skipping excluded subtrees.
+ * @param {Element[]} containers
+ * @param {string} exclude
+ * @returns {Array<{el: Element, text: string}>}
+ */
+function pickText(containers, exclude) {
+    const result = [];
+    containers.forEach(function (container) {
+        if (!container) { return; }
+        container.querySelectorAll('h1,h2,h3,h4,h5,h6,p,li,td,blockquote').forEach(function (node) {
+            if (node.closest(exclude)) { return; }
+            const txt = (readableText(node) || '').trim();
+            if (txt && txt.length > 2) {
+                result.push({ el: node, text: txt });
+            }
+        });
     });
     return result;
 }

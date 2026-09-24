@@ -89,7 +89,10 @@ export function openPanel() {
     fabEl.setAttribute('aria-expanded', 'true');
 
     setTimeout(function () {
-        if (!panelEl) { return; }
+        // A visitor who pressed Escape or clicked outside within this 50 ms
+        // already had focus handed back to the FAB. Following the timer would
+        // strand them inside a panel that is no longer open.
+        if (!panelEl || !isPanelOpen()) { return; }
         const first = panelEl.querySelector('button, [href], input, [tabindex]:not([tabindex="-1"])');
         if (first) { first.focus(); }
     }, 50);

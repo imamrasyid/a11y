@@ -234,6 +234,68 @@ describe('panel interaction', function () {
         expect(events).toEqual(['open', 'close']);
         A11yWidget.destroy();
     });
+
+    it('leaves focus with the FAB when Escape arrives before the panel finished opening', function () {
+        vi.useFakeTimers();
+        try {
+            click('#a11yFab');
+            document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+            vi.advanceTimersByTime(200);
+            expect(document.activeElement).toBe(document.getElementById('a11yFab'));
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+});
+
+describe('what the reader reads', function () {
+    beforeEach(function () {
+        A11yWidget.destroy();
+        localStorage.clear();
+        document.body.innerHTML =
+            '<div class="post-details-article"><p>isi blog</p></div>' +
+            '<main><p>isi utama</p><nav><p>menu</p></nav></main>';
+        A11yWidget.init({ storageKey: KEY, defaults: { tts: { enabled: true } } });
+        A11yWidget.tts.grantPermission();
+    });
+
+    afterEach(function () {
+        A11yWidget.destroy();
+        localStorage.clear();
+    });
+
+    function spokenTexts() {
+        return spoken.map(function (utterance) { return utterance.text; });
+    }
+
+    it('reads the landmark by default and not the site wrapper', function () {
+        A11yWidget.tts.speakPage();
+        expect(spokenTexts()).toEqual(['isi utama']);
+    });
+
+    it('reads the container the host names', function () {
+        A11yWidget.destroy();
+        A11yWidget.init({
+            storageKey: KEY,
+            defaults: { tts: { enabled: true } },
+            contentSelectors: ['.post-details-article'],
+        });
+        A11yWidget.tts.grantPermission();
+        A11yWidget.tts.speakPage();
+        expect(spokenTexts()).toEqual(['isi blog']);
+    });
+
+    it('skips the subtree the host excludes', function () {
+        A11yWidget.destroy();
+        A11yWidget.init({
+            storageKey: KEY,
+            defaults: { tts: { enabled: true } },
+            excludeSelectors: ['main'],
+        });
+        A11yWidget.tts.grantPermission();
+        A11yWidget.tts.speakPage();
+        expect(spokenTexts()).toEqual(['isi blog']);
+    });
 });
 
 describe('public state API', function () {

@@ -7,6 +7,15 @@ versi mengikuti [Semantic Versioning](https://semver.org/lang/id/).
 
 ### Ditambahkan
 
+- Opsi `contentSelectors` dan `excludeSelectors` untuk "Baca halaman": daftar
+  pertama yang berisi teks menang, dan subpohon yang dikecualikan (navigasi,
+  footer, `header`, `aside`, UI widget itu sendiri) tidak ikut dibacakan.
+  Selector yang tidak bisa diparsing dibuang dengan `console.warn`, bukan
+  merobohkan pembaca.
+- Opsi `fallbackLang`: locale yang dipakai teks panel ketika `lang` tidak punya
+  string pack. `lang: 'jv'` tetap memilih suara Jawa.
+- Tiap locale pack punya `speechRules` sendiri (`src/i18n/id.js`, `en.js`),
+  dibaca lewat `getSpeechRules(lang)`.
 - Seksi pembaca teks di panel menjadi kontrol pemutaran penuh, bukan lagi
   sakelar tunggal: **Baca halaman / Jeda / Lanjut / Berhenti**, slider kecepatan
   0,5–2,0 dengan readout (`1,0×`), `<select>` suara yang diisi dari
@@ -24,8 +33,9 @@ versi mengikuti [Semantic Versioning](https://semver.org/lang/id/).
   test — sebuah uji memutuskan kapan utterance mulai dan selesai, jadi tidak
   ada timer atau tebakan waktu. Stub ini meniru `onend` yang dipicu Chromium
   di dalam `cancel()`.
-- Harness pengujian: Vitest + jsdom (133 unit test untuk state, event bus,
+- Harness pengujian: Vitest + jsdom (153 unit test untuk state, event bus,
   adapter penyimpanan, paritas kunci i18n, modul DOM, template panel, izin TTS,
+  aturan ucapan per-locale, konten mana yang boleh dibacakan,
   baca-saat-seleksi, dan integrasi `A11yWidget` lewat API publik) serta
   Playwright + axe-core (19 uji e2e terhadap `test/fixtures/playground.html`,
   termasuk pemindaian kontras pada panel widget sendiri dan pada seksi pembaca
@@ -83,6 +93,22 @@ versi mengikuti [Semantic Versioning](https://semver.org/lang/id/).
   `opacity` 0,22s masih berjalan, sehingga axe mencampur warna dengan halaman
   dan melaporkan rasio yang tidak pernah dilihat siapa pun. Scan kini menunggu
   panel mapan.
+- **Fokus bisa tertinggal di panel yang sudah tertutup.** `openPanel()`
+  memindahkan fokus ke kontrol pertama lewat `setTimeout(..., 50)`, jadi
+  pengunjung yang menekan Escape (atau menutup dari luar) di dalam 50 ms itu
+  kehilangan fokusnya lagi ke panel yang sudah `aria-hidden` — pengguna keyboard
+  tertinggal di widget yang tidak terlihat. Timer kini memeriksa apakah panel
+  masih terbuka.
+- Selector portal `.post-details-article` tidak lagi di-hardcode di
+  `getPageContent()`; situs yang memakainya menuliskannya sendiri lewat
+  `contentSelectors`.
+- `initI18n` mengembalikan Bahasa Indonesia secara diam-diam untuk kode yang
+  tidak dikenal — bahkan ketika `baseLang: 'en'` diminta, dan tanpa satu pun
+  pesan. Kini fallback itu dihormati dan kode tak dikenal dilaporkan ke console.
+- Aturan normalisasi tidak lagi jadi satu daftar raksasa di mesin TTS:
+  `Rp.`/`Kab.`/`DPRD` kini milik pack `id`, sehingga bahasa lain tidak pernah
+  membacanya. `&` ikut berpindah — bukan simbol universal, karena diucapkan
+  sebagai kata ("dan" / "and").
 - `npm run lint` gagal total: `.eslintrc.js` memakai `module.exports` di paket
   `"type": "module"` → `ReferenceError: module is not defined`.
   Diganti menjadi `.eslintrc.cjs`.
@@ -101,6 +127,11 @@ versi mengikuti [Semantic Versioning](https://semver.org/lang/id/).
 
 ### Diubah
 
+- `getPageContent(options)` menerima `contentSelectors`/`excludeSelectors`;
+  `DEFAULT_REPLACEMENTS` berganti menjadi `UNIVERSAL_REPLACEMENTS` (hanya `+`),
+  dan `addReplacements`/`setReplacements`/`resetReplacements`/`getReplacements`
+  sekarang hanya menyentuh lapisan aturan milik host — aturan locale tidak bisa
+  lagi ditimpa dari luar.
 - `syncUI(state)` menjadi `syncUI(state, ttsView)`: panel butuh gambaran
   pemutaran (sedang bicara, dijeda, daftar suara, status) yang bukan bagian
   dari state yang dipersist. Kontrol transportasi sengaja **dinonaktifkan,

@@ -4,6 +4,10 @@ import {
     isPermissionGranted, removePrompt, resetPermissionFlow,
 } from '../../src/modules/tts/ttsPermission.js';
 import { applyAutoSpeak, disableAutoSpeak, isAutoSpeakActive } from '../../src/modules/tts/ttsAutoSpeak.js';
+import {
+    applyReplacements, addReplacements, resetReplacements, getReplacements, rulesFor,
+} from '../../src/modules/tts/ttsReplacements.js';
+import { getPageContent } from '../../src/modules/tts/tts.js';
 import { spoken, lastUtterance, endUtterance } from './speechStub.js';
 
 const OPT = {
@@ -170,5 +174,101 @@ describe('tts auto-speak on selection', function () {
         window.getSelection().removeAllRanges();
         await new Promise(function (r) { setTimeout(r, 80); });
         expect(heard).toEqual([]);
+    });
+});
+
+describe('what the reader says, per locale', function () {
+    afterEach(function () { resetReplacements(); });
+
+    it('expands an Indonesian abbreviation only in Indonesian', function () {
+        expect(applyReplacements('Kab. Kebumen', 'id')).toBe('Kabupaten Kebumen');
+        expect(applyReplacements('Kab. Kebumen', 'en')).toBe('Kab. Kebumen');
+    });
+
+    it('does not say "Rupiah" over English text', function () {
+        expect(applyReplacements('Rp 5.000', 'id')).toBe('Rupiah 5.000');
+        expect(applyReplacements('Rp 5.000', 'en')).toBe('Rp 5.000');
+    });
+
+    it('reads "&" as whichever word the language uses', function () {
+        expect(applyReplacements('Pajak & retribusi', 'id')).toBe('Pajak dan retribusi');
+        expect(applyReplacements('Tax & fees', 'en')).toBe('Tax and fees');
+    });
+
+    it('keeps the symbols that need no translation universal', function () {
+        expect(applyReplacements('2 + 3', 'id')).toBe('2 plus 3');
+        expect(applyReplacements('2 + 3', 'en')).toBe('2 plus 3');
+    });
+
+    it('applies a host rule everywhere unless it names one language', function () {
+        addReplacements([
+            { search: /KB/g, replace: 'kilo byte' },
+            { search: /kB/g, replace: 'kilobit', lang: 'en' },
+        ]);
+        expect(applyReplacements('1 KB', 'id')).toBe('1 kilo byte');
+        expect(applyReplacements('1 KB', 'en')).toBe('1 kilo byte');
+        expect(applyReplacements('1 kB', 'id')).toBe('1 kB');
+        expect(applyReplacements('1 kB', 'en')).toBe('1 kilobit');
+    });
+
+    it('resets only what the host added', function () {
+        addReplacements([{ search: /Zzz/g, replace: 'tidur' }]);
+        expect(applyReplacements('Zzz', 'id')).toBe('tidur');
+        resetReplacements();
+        expect(getReplacements()).toEqual([]);
+        expect(applyReplacements('Zzz', 'id')).toBe('Zzz');
+        expect(rulesFor('id').length).toBeGreaterThan(0);
+    });
+});
+
+describe('what the reader is allowed to read', function () {
+    function texts(options) {
+        return getPageContent(options).map(function (chunk) { return chunk.text; });
+    }
+
+    it('reads the main landmark and skips the chrome inside it', function () {
+        document.body.innerHTML =
+            '<main><nav><p>menu navigasi</p></nav><p>isi artikel</p>' +
+            '<footer><p>catatan kaki</p></footer></main>';
+        expect(texts()).toEqual(['isi artikel']);
+    });
+
+    it('finds content without a site-specific class', function () {
+        document.body.innerHTML = '<article><h2>Judul</h2></article>';
+        expect(texts()).toEqual(['Judul']);
+    });
+
+    it('passes over an empty container to the one holding text', function () {
+        document.body.innerHTML = '<main></main><article><p>dalam article</p></article>';
+        expect(texts()).toEqual(['dalam article']);
+    });
+
+    it('lets a host point it at its own container', function () {
+        document.body.innerHTML =
+            '<div class="post-details-article"><p>isi khusus</p></div>' +
+            '<main><p>bukan ini</p></main>';
+        expect(texts({ contentSelectors: ['.post-details-article'] })).toEqual(['isi khusus']);
+    });
+
+    it('lets a host exclude a subtree', function () {
+        document.body.innerHTML =
+            '<main><p>dibaca</p><div class="iklan"><p>tidak dibaca</p></div></main>';
+        expect(texts({ excludeSelectors: ['.iklan'] })).toEqual(['dibaca']);
+    });
+
+    it('survives a selector the host mistyped', function () {
+        const warn = vi.spyOn(console, 'warn').mockImplementation(function () { });
+        document.body.innerHTML = '<main><p>masih terbaca</p></main>';
+        expect(texts({ contentSelectors: ['..booom..'], excludeSelectors: ['[[['] }))
+            .toEqual(['masih terbaca']);
+        expect(warn).toHaveBeenCalled();
+        warn.mockRestore();
+    });
+
+    it('never reads the widget itself back to the visitor', function () {
+        document.body.innerHTML =
+            '<main><p>isi</p><div id="a11yPanel"><button><span>Reset</span></button>' +
+            '<ul><li>opsi panel</li></ul></div></main>';
+        expect(texts()).toEqual(['isi']);
     });
 });

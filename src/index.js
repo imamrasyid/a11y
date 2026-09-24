@@ -157,6 +157,9 @@ function _setTtsStatus(stringKey) {
  * @param {string}  [options.position='bottom-right']
  * @param {string|object} [options.lang='id']   Locale code or custom strings object
  * @param {string}  [options.baseLang='id']     Base locale for partial overrides
+ * @param {string}  [options.fallbackLang]      Locale to use when `lang` is unknown
+ * @param {string[]} [options.contentSelectors] Containers "read page" may read
+ * @param {string[]} [options.excludeSelectors] Subtrees "read page" must skip
  * @param {object}  [options.modules]           Per-module enable/disable flags
  * @param {object}  [options.defaults]          Values used when the visitor has no stored choice
  * @param {string[]} [options.migrateFrom]      Legacy storage keys to move onto storageKey
@@ -184,9 +187,14 @@ function init(options) {
     }
 
     // ── Language ───────────────────────────────────────────────────────────────
-    // Resolve _lang from options. If lang is an object (custom strings), use baseLang.
-    _lang = (typeof _options.lang === 'string') ? _options.lang : (_options.baseLang || 'id');
-    initI18n(_options.lang || 'id', _options.baseLang);
+    // Speech and panel text resolve separately: a code with no locale pack
+    // ('jv') still selects a Javanese voice, while the UI falls back to a
+    // language it can actually render — and initI18n says so on the console.
+    const uiLang = initI18n(
+        _options.lang || 'id',
+        _options.baseLang || _options.fallbackLang,
+    );
+    _lang = (typeof _options.lang === 'string') ? _options.lang : uiLang;
 
     // ── State ──────────────────────────────────────────────────────────────────
     // Preferences written by an older build land on the current key first, so
@@ -420,7 +428,10 @@ const tts = {
     /** Speaks the full page content with element highlighting. */
     speakPage() {
         if (!_state.tts.enabled) { return; }
-        const content = getPageContent();
+        const content = getPageContent({
+            contentSelectors: _options.contentSelectors,
+            excludeSelectors: _options.excludeSelectors,
+        });
         if (!content.length) { _setTtsStatus('ttsNothingToRead'); return; }
         const voice = _state.tts.voice || selectVoice(_lang);
         _withPermission(function () {
