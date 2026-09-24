@@ -27,9 +27,9 @@
   // :hover still matches a disabled button, so undo the hover treatment
   // instead of implying the control is live.
   &:hover {
-    background-color: v.$a11y-bg;
-    border-color: v.$a11y-border;
-    color: v.$a11y-text;
+    background-color: var(--a11y-bg);
+    border-color: var(--a11y-border);
+    color: var(--a11y-text);
   }
 }
 
@@ -38,8 +38,8 @@
   flex-direction: column;
   gap: 5px;
   padding: 8px 12px;
-  background-color: v.$a11y-bg;
-  border: 1.5px solid v.$a11y-border;
+  background-color: var(--a11y-bg);
+  border: 1.5px solid var(--a11y-border);
   border-radius: v.$a11y-radius-btn;
 }
 
@@ -48,7 +48,7 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.6px;
-  color: v.$a11y-text-muted;
+  color: var(--a11y-text-muted);
 }
 
 .a11y-tts__rate-row {
@@ -79,7 +79,7 @@
   text-align: right;
   font-size: 12px;
   font-weight: 700;
-  color: v.$a11y-text;
+  color: var(--a11y-text);
 }
 
 .a11y-tts__select {
@@ -87,9 +87,9 @@
   padding: 7px 8px;
   font-family: inherit;
   font-size: 12px;
-  color: v.$a11y-text;
-  background-color: v.$a11y-bg;
-  border: 1.5px solid v.$a11y-border;
+  color: var(--a11y-text);
+  background-color: var(--a11y-bg);
+  border: 1.5px solid var(--a11y-border);
   border-radius: 8px;
   cursor: pointer;
 
@@ -111,7 +111,7 @@
   min-height: 18px;
   font-size: 12px;
   line-height: 1.5;
-  color: v.$a11y-text;
+  color: var(--a11y-text);
 }
 
 // ── Element-level highlight (current paragraph being spoken) ──────────────────
@@ -147,14 +147,14 @@
   z-index: calc(#{v.$a11y-z} + 5);
   width: 100%;
   max-width: 480px;
-  background-color: v.$a11y-bg;
-  border: 1px solid v.$a11y-border;
+  background-color: var(--a11y-bg);
+  border: 1px solid var(--a11y-border);
   border-bottom: none;
   border-radius: v.$a11y-radius v.$a11y-radius 0 0;
   box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.12);
   padding: 20px 20px 24px;
   font-family: var(--a11y-font-ui);
-  color: v.$a11y-text;
+  color: var(--a11y-text);
   transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 
   &.a11y-tts-prompt--visible {
@@ -166,7 +166,7 @@
   font-size: 13px;
   line-height: 1.6;
   margin-bottom: 16px;
-  color: v.$a11y-text;
+  color: var(--a11y-text);
 
   strong {
     display: block;
@@ -199,21 +199,24 @@
 
   &--deny {
     background: none;
-    border: 1.5px solid v.$a11y-border;
-    color: v.$a11y-text-muted;
+    border: 1.5px solid var(--a11y-border);
+    color: var(--a11y-text-muted);
 
     &:hover {
-      border-color: #dc3545;
-      color: #dc3545;
+      border-color: var(--a11y-danger-text);
+      color: var(--a11y-danger-text);
     }
   }
 
   &--allow {
-    background-color: v.$a11y-primary;
-    color: #fff;
+    // $a11y-primary with white is 4.50:1 — a rounding away from failing. The
+    // active-state pairing carries the same button at 6.44:1 in both schemes,
+    // and hover deepens the ring instead of shifting to a weaker background.
+    background-color: v.$a11y-active-bg;
+    color: v.$a11y-active-text;
 
     &:hover {
-      background-color: v.$a11y-primary-dark;
+      box-shadow: inset 0 0 0 2px rgba(v.$a11y-active-text, 0.5);
     }
   }
 }

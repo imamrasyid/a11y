@@ -67,6 +67,24 @@ versi mengikuti [Semantic Versioning](https://semver.org/lang/id/).
   tak dikenal dan nilai di luar daftar yang sah (mis. `contrast: 'neon'`) tidak
   lagi bisa menyentuh DOM, dan "belum pernah memilih" kini bisa dibedakan dari
   "memilih nilai default".
+- Opsi `scaleBase` (`number | 'auto'`, default `'auto'`): ukuran dasar teks
+  halaman diukur sekali saat `init()` dari `getComputedStyle(body).fontSize` —
+  jatuh ke `<html>` lalu 16px kalau tidak ada layout engine. Angka 14px warisan
+  tidak lagi jadi asumsi diam-diam.
+- Opsi `styleNonce`: nonce CSP dipasang ke elemen `<style>` **sebelum** elemen
+  itu disisipkan ke `<head>` (nonce setelah penyisipan diabaikan browser), jadi
+  pengatur ukuran teks survive pada `style-src` yang ketat.
+- Token warna baru di `:root` — `--a11y-accent`, `--a11y-warn-bg`,
+  `--a11y-warn-text`, `--a11y-danger-bg`, `--a11y-danger-text` — masing-masing
+  dengan pasangan gelap yang ikut di-`@include dark-surface`.
+- `--a11y-scale-ratio` (default `1`) dibaca host yang punya type scale sendiri:
+  `font-size: calc(1rem * var(--a11y-scale-ratio))`.
+- Lima uji e2e yang mengukur hasil render betulan (`what the controls paint`):
+  ukuran teks host 13px→26px sementara bagian bertuliskan px absolut dibiarkan,
+  caption gambar hasil pseudo-element (termasuk gambar yang disuntik setelah
+  render awal), reset `outline` milik situs yang dikembalikan modus keyboard,
+  rata-kiri yang tidak meratakan panel, dan mode gelap yang benar-benar
+  mengubah permukaan panel. Diukur di Chromium sungguhan, bukan jsdom.
 
 ### Diperbaiki
 
@@ -124,6 +142,39 @@ versi mengikuti [Semantic Versioning](https://semver.org/lang/id/).
   (badge footer hanya 4,26:1 di atas `$a11y-bg-hover`, syarat AA 4,5:1) dan
   `$a11y-dark-text-muted` `#9090a0` → `#a6a6bc` (4,46:1 di atas
   `$a11y-dark-bg-hover`). axe-core kini nol pelanggaran pada panel.
+- **Mode gelap sebelumnya kode mati.** `_dark.scss` hanya menata ulang properti
+  lewat `var(--a11y-*)`, sementara aturan panel, komponen, dan seksi pembaca
+  masih menulis heksimal hasil compile — jadi mengaktifkan kontras terbalik tidak
+  mengubah apa pun pada permukaan widget. Semua aturan permukaan kini memakai
+  tokennya, dan `data-a11y-contrast: reverse` benar-benar terlihat.
+- Mengaktifkan mode gelap memaksa beberapa pasangan warna diperiksa ulang:
+  `$a11y-danger-text` `#dc3545` di atas chip merah muda hanya 3,86:1 (gagal AA)
+  → `#b02531` (5,67:1 di atas chip, 6,66:1 di atas putih); teks aksen brand
+  `#0d6efd` di atas putih 4,50:1 tanpa sisa → `$a11y-accent`
+  `#0a58ca` (6,44:1), dengan aksen gelap `#8ab8ff` (6,92:1 di atas `#2a2a3e`).
+  Tombol "Izinkan" pada prompt TTS ikut naik dari tepat-4,50 ke 6,44.
+- **Caption gambar tidak lagi menyuntik DOM.** Build lama menambah
+  `<span class="a11y-img-caption">` di belakang tiap `<img>` saat init: gambar
+  yang datang kemudian (ajax, rute SPA, galeri) tidak dapat caption, dan
+  pembaca layar mendengar teks alt dua kali. Kini satu aturan CSS
+  `img[alt]:not([alt=""])::after { content: attr(alt) }` — tanpa observer,
+  tanpa markup tambahan, dan alt kosong (gambar dekoratif) tetap tanpa teks.
+- `text-align: revert !important` pada `.a11y-panel *` tidak hanya membatalkan
+  sapuan rata-kiri host — `revert` menarik kembali seluruh origin penulis,
+  sehingga deklarasi milik widget ikut hilang (readout ukuran teks kehilangan
+  perataannya). Sapuan kini memakai `:not()` pada panel dan prompt TTS, sehingga
+  tidak pernah menyentuh UI sendiri. Daftar `:not()` tujuh kelas diganti satu
+  pola yang sama.
+- Modus keyboard mengembalikan cincin fokus yang situs matikan secara agresif.
+  Aturan `outline: none !important` pada `:focus` butuh `!important` juga untuk
+  dikalahkan; aturan itu (dan pengecualian hover FAB, dan penjaga
+  `visibility/opacity/top` penanda baca) hilang saat ekstraksi paket dan sudah
+  dipulihkan.
+- Penanda baca (reading guide) kini mati total saat fiturnya dimatikan:
+  `display: none` saja masih menempatkan elemen di puncak viewport, jadi aturan
+  host yang menulis ulang `display` (print sheet, reset dengan spesifisitas lebih
+  tinggi) bisa memunculkan palang biru nyasar. Elemen sekarang juga digeser ke
+  `top: -100px` plus `visibility/opacity` nol.
 
 ### Diubah
 
@@ -153,7 +204,22 @@ versi mengikuti [Semantic Versioning](https://semver.org/lang/id/).
   ada).
 - `applyAnimations(enabled, explicit)` kini satu-satunya jalur flag eksplisit;
   `setUserExplicit()` dihapus dan `loadState()` diganti `loadStoredPatch()`.
-
+- `textScale` tidak lagi menulis ukuran piksel milik sendiri untuk `span`, `p`,
+  `li`, `td`, `th` dan tiap level heading. Yang ditulis sekarang cuma `font-size`
+  `<html>` dan `<body>` (ukuran dasar terukur × rasio, `!important`),
+  `--a11y-scale-ratio`, dan satu blok yang menahan UI widget tetap pada ukuran
+  tempatnya dibuat. Konsekuensi yang disengaja: teks yang situs kunci ke piksel
+  absolut tidak ikut membesar — cascade itu jadi milik host.
+- Ukuran dasar diukur **sekali** saat `init()`. `applyTextScale()` tidak pernah
+  membaca `<body>` lagi, karena membaca balik ukuran yang barusan ditulis akan
+  menggandakan 120% menjadi 144% lalu 172% dan terus melenceng tiap klik.
+- Normalisasi internal panel bukan `.a11y-panel * { font-size: <tetap> }` —
+  `*` akan meratakan skala tipografi panel sendiri (judul 15px, label opsi
+  10,5px, readout 12px jadi satu ukuran semua). Yang dipakai blok pin pada empat
+  akar UI widget: `.a11y-panel, .a11y-fab, .a11y-tts-prompt, .a11y-skip-link`.
+- Modul gambar murni sakelar atribut: `destroyImages()` dihapus dari permukaan
+  publik (tidak ada lagi yang tertinggal di DOM host untuk dibersihkan), dan
+  `resetImages()` tetap ada.
 - `playwright.config.js`: satu worker dan retries di CI setelah satu uji
   keyboard terbukti flaky saat berjalan paralel.
 - README: tautan `npm install` dan CDN yang menunjuk paket belum terbit diganti

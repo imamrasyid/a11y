@@ -1,12 +1,16 @@
 /**
  * Text scale module.
- * Injects a <style> tag that scales font sizes proportionally.
- * Range: 70–200 (percent). At 100% the style tag is emptied.
  *
- * Strategy: override CSS custom properties on :root so any app using
- * CSS vars picks them up automatically. Also target common semantic
- * elements directly for apps that use hardcoded px values.
- * All widget-internal selectors are excluded via :not().
+ * Grows the page's own type instead of replacing it: <html> is rescaled so
+ * `rem` sizes follow, <body> so inherited and `em` sizes follow, and the ratio
+ * is published as --a11y-scale-ratio for a host that drives its own scale.
+ *
+ * The old rules that pinned <span>, <p>, <li>, <td> and every heading level to
+ * pixel values this module invented are gone on purpose — they overwrote the
+ * host's design with numbers nobody asked for. Text a site fixes to an absolute
+ * pixel size therefore does not grow; that cascade belongs to the host.
+ *
+ * Range: 70–200 (percent). At 100% the style tag is emptied.
  */
 
 /** @type {HTMLStyleElement|null} */
@@ -16,6 +20,34 @@ const ATTR = 'data-a11y-scale';
 const MIN = 70;
 const MAX = 200;
 const DEFAULT = 100;
+/** Used when no layout engine can report a size (jsdom) or the host hid <body>. */
+const FALLBACK_PX = 16;
+
+// The widget's own UI is authored in fixed pixels, so it is pinned back to the
+// size it was designed at while the page around it grows.
+const OWN_UI = '.a11y-panel, .a11y-fab, .a11y-tts-prompt, .a11y-skip-link';
+
+/** @type {{ root: number|null, body: number|null }} */
+let base = { root: null, body: null };
+
+/** @type {string} */
+let nonce = '';
+
+/**
+ * Called once per init(): sets the measuring policy and forgets any measurement
+ * an earlier instance took.
+ *
+ * @param {object} [options]
+ * @param {number|'auto'} [options.scaleBase='auto'] 'auto' measures the page;
+ *   a number is taken as the body pixel size without measuring.
+ * @param {string} [options.styleNonce] CSP nonce for the injected <style> tag.
+ */
+export function configureTextScale(options) {
+    const opts = options || {};
+    const fixed = typeof opts.scaleBase === 'number' && isFinite(opts.scaleBase) && opts.scaleBase > 0;
+    base = { root: null, body: fixed ? opts.scaleBase : null };
+    nonce = typeof opts.styleNonce === 'string' ? opts.styleNonce : '';
+}
 
 /**
  * @param {number} scale - Percentage value (70–200).
@@ -60,6 +92,8 @@ export function destroyTextScale() {
     }
     styleEl = null;
     document.documentElement.removeAttribute(ATTR);
+    base = { root: null, body: null };
+    nonce = '';
 }
 
 // ─── Internal ────────────────────────────────────────────────────────────────
@@ -73,41 +107,65 @@ function ensureStyleEl() {
     }
     styleEl = document.createElement('style');
     styleEl.id = 'a11y-text-scale';
+    // A nonce has to be on the element before it is inserted, so the injected
+    // tag survives a style-src CSP that only allows nonced styles.
+    if (nonce) { styleEl.setAttribute('nonce', nonce); }
     document.head.appendChild(styleEl);
 }
 
+/**
+ * @param {number} r - Multiplier, e.g. 1.5 for 150%.
+ * @returns {string}
+ */
 function buildCSS(r) {
-    const px = function (base) { return Math.round(base * r) + 'px'; };
-
-    // Widget-internal classes to exclude from font scaling
-    const exclude = [
-        ':not(.a11y-opt__icon)',
-        ':not(.a11y-opt__label)',
-        ':not(.a11y-toggle-row__icon)',
-        ':not(.a11y-section__label)',
-        ':not(.a11y-textsize__display)',
-        ':not(.a11y-panel__title)',
-        ':not(.a11y-panel__footer-badge)',
-    ].join('');
-
+    const b = resolveBase();
     return [
-        // CSS custom properties — picked up by any app using vars
         ':root {',
         '  --a11y-scale-ratio: ' + r + ';',
         '}',
 
-        // Semantic elements — generic, no project-specific selectors
-        'html[' + ATTR + '] body { font-size: ' + px(16) + ' !important; }',
-        'html[' + ATTR + '] p, html[' + ATTR + '] li, html[' + ATTR + '] td, html[' + ATTR + '] th {',
-        '  font-size: ' + px(16) + ' !important;',
-        '}',
-        'html[' + ATTR + '] span' + exclude + ' { font-size: ' + px(16) + ' !important; }',
-        'html[' + ATTR + '] h1 { font-size: ' + px(40) + ' !important; }',
-        'html[' + ATTR + '] h2 { font-size: ' + px(32) + ' !important; }',
-        'html[' + ATTR + '] h3 { font-size: ' + px(26) + ' !important; }',
-        'html[' + ATTR + '] h4 { font-size: ' + px(20) + ' !important; }',
-        'html[' + ATTR + '] h5 { font-size: ' + px(18) + ' !important; }',
-        'html[' + ATTR + '] h6 { font-size: ' + px(16) + ' !important; }',
-        'html[' + ATTR + '] a  { font-size: inherit; }',
+        // !important is deliberate here: this control exists to outvote a host
+        // cascade that pinned its text to pixel values.
+        'html[' + ATTR + '] { font-size: ' + px(b.root * r) + ' !important; }',
+        'html[' + ATTR + '] body { font-size: ' + px(b.body * r) + ' !important; }',
+
+        'html[' + ATTR + '] ' + OWN_UI + ' { font-size: ' + px(b.body) + '; }',
     ].join('\n');
+}
+
+/**
+ * Measured once and then reused. Re-measuring per apply() would read back the
+ * size the previous apply() wrote — and compound it on every step.
+ * @returns {{ root: number, body: number }}
+ */
+function resolveBase() {
+    if (base.root === null) { base.root = measuredPx(document.documentElement) || FALLBACK_PX; }
+    if (base.body === null) {
+        // <body> carries the reading text; a host that never styled it falls
+        // back to the size it inherits, which is what measuring <html> gives.
+        base.body = measuredPx(document.body) || base.root;
+    }
+    return base;
+}
+
+/**
+ * @param {Element|null} el
+ * @returns {number} 0 when the browser reports no usable size
+ */
+function measuredPx(el) {
+    if (!el || typeof window === 'undefined' || typeof window.getComputedStyle !== 'function') {
+        return 0;
+    }
+    const value = parseFloat(window.getComputedStyle(el).fontSize);
+    return isFinite(value) && value > 0 ? value : 0;
+}
+
+/**
+ * Rounded to whole pixels: a third of a pixel is invisible but makes every
+ * rule differ in the injected text, which costs bytes.
+ * @param {number} value
+ * @returns {string}
+ */
+function px(value) {
+    return Math.round(value) + 'px';
 }

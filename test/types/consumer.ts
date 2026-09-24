@@ -37,6 +37,8 @@ const options: A11yWidgetOptions = {
     fallbackLang: 'id',
     contentSelectors: ['main', '.post-details-article'],
     excludeSelectors: ['nav', '.iklan'],
+    scaleBase: 'auto',
+    styleNonce: 'r4nd0m-per-page',
     modules: { tts: false, readingGuide: false } satisfies ModuleFlags,
     defaults: { contrast: 'grayscale', tts: { rate: 1.2 } },
     skipLink: true,
@@ -58,6 +60,9 @@ A11yWidget.init({ lang: { panelTitel: 'x' } });
 A11yWidget.init({ defaults: { contrast: 'sepia' } });
 // @ts-expect-error textScale is a number, not a percentage string
 A11yWidget.init({ defaults: { textScale: '150%' } });
+A11yWidget.init({ scaleBase: 14 });
+// @ts-expect-error scaleBase is 'auto' or a unitless pixel number
+A11yWidget.init({ scaleBase: '14px' });
 
 // ─── state ───────────────────────────────────────────────────────────────────
 const state: A11yState = A11yWidget.getState();

@@ -192,6 +192,14 @@ export interface A11yWidgetOptions {
   /** Subtrees "read page" skips inside those containers (navigation, footers,
    *  the widget's own UI, …). An invalid rule is dropped with a console warning. */
   excludeSelectors?: string[];
+  /** Pixel size the text-size control multiplies. 'auto' (default) measures
+   *  `getComputedStyle(document.body).fontSize` once per init — falling back to
+   *  the root size, then to 16px — so the value cannot drift while a visitor
+   *  steps through the scale. A number fixes the base without measuring. */
+  scaleBase?: number | 'auto';
+  /** CSP nonce for the <style> tag the text-size control injects. Required by a
+   *  `style-src` policy that only trusts nonced styles; ignored otherwise. */
+  styleNonce?: string;
   /** Per-module enable/disable flags. All enabled by default. */
   modules?: ModuleFlags;
   /** Override default state values — applied before stored state and by `reset()`. */

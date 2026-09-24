@@ -5,6 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>a11y-widget — fixture playground</title>
   <link rel="stylesheet" href="/dist/a11y-widget.css">
+  <style>
+    /* Stand-ins for a real site's own cascade: an absolute body size the scale
+       control has to measure rather than assume, text pinned to its own pixel
+       size that it must leave alone, and the focus reset that keyboard mode has
+       to outvote. */
+    body { font-size: 13px; }
+    .host-note { font-size: 11px; }
+    a:focus { outline: 0 !important; }
+  </style>
 </head>
 <body>
   <a href="#beranda" class="host-skip">Skip link milik host, bukan widget</a>
@@ -20,7 +29,7 @@
   <main>
     <article>
       <h1>Pos Pelayanan Terpadu membuka layanan baru</h1>
-      <p>Pemerintah Kabupaten membuka layanan_aduan baru untuk warga di 28 kecamatan, dengan target waktu tanggap 1x24 jam.</p>
+      <p>Pemerintah Kabupaten membuka layanan_aduan baru untuk warga di 28 kecamatan, dengan target waktu tanggap 1x24 jam. <span class="host-note" id="hostNote">(arsip 2026)</span></p>
       <p>Biaya administrasi sebesar Rp. 25.000 dan berlaku untuk Kab. Kebumen serta DPRD setempat.</p>
       <ul>
         <li>Jam pelayanan 08.00 WIB sampai 15.00 WIB</li>

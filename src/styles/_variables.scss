@@ -9,6 +9,11 @@
 //
 // Tokens are also exported as CSS custom properties on :root so JS and
 // plain-CSS consumers can read/override them at runtime.
+//
+// The surface tokens below (bg, bg-hover, border, text, text-muted, accent,
+// warn, danger) are the ones _dark.scss re-points at runtime, so component
+// rules must consume them through var(--a11y-*) — a rule that hardcodes the
+// SCSS variable keeps rendering the light palette in dark mode.
 // =============================================================================
 
 // ── Brand colours ─────────────────────────────────────────────────────────────
@@ -31,6 +36,20 @@ $a11y-text-muted: #5c666f !default;
 // away from failing AA. The dark variant gives the same pairing 6.44:1.
 $a11y-active-bg: $a11y-primary-dark !default;
 $a11y-active-text: #ffffff !default;
+
+// ── Accent text ───────────────────────────────────────────────────────────────
+// Where the brand colour is used *as* text (a hovered label, a title icon) it
+// needs the surface contrast a reader needs — $a11y-primary on white is 4.50:1,
+// so the dark variant carries the text role and dark mode lightens it back.
+$a11y-accent: $a11y-primary-dark !default;
+
+// ── Semantic chips (reset / close hover, deny hover) ──────────────────────────
+// Bootstrap's #dc3545 measures 3.86:1 on the light-red chip and 4.53:1 on white;
+// the darker red clears both. Pairs are checked at normal-text sizes.
+$a11y-warn-bg: #fff3cd !default;
+$a11y-warn-text: #856404 !default;
+$a11y-danger-bg: #fde8e8 !default;
+$a11y-danger-text: #b02531 !default;
 
 // ── Elevation ─────────────────────────────────────────────────────────────────
 $a11y-shadow: 0 8px 32px rgba(0, 0, 0, 0.14) !default;
@@ -61,11 +80,18 @@ $a11y-font-heading:
   sans-serif !default;
 
 // ── Dark mode surface overrides ───────────────────────────────────────────────
+// Each pair below is checked at normal-text sizes against the dark surfaces it
+// will actually sit on (#1e1e2e, #2a2a3e, #3a3a4e).
 $a11y-dark-bg: #1e1e2e !default;
 $a11y-dark-bg-hover: #2a2a3e !default;
 $a11y-dark-border: #3a3a4e !default;
 $a11y-dark-text: #e0e0f0 !default;
 $a11y-dark-text-muted: #a6a6bc !default;
+$a11y-dark-accent: #8ab8ff !default;
+$a11y-dark-warn-bg: #3a2f14 !default;
+$a11y-dark-warn-text: #ffd970 !default;
+$a11y-dark-danger-bg: #3a1d22 !default;
+$a11y-dark-danger-text: #ff9aa2 !default;
 
 // ── Breakpoints ───────────────────────────────────────────────────────────────
 $a11y-bp-mobile: 480px !default;
@@ -85,6 +111,14 @@ $a11y-bp-mobile: 480px !default;
   --a11y-text-muted: #{$a11y-text-muted};
   --a11y-active-bg: #{$a11y-active-bg};
   --a11y-active-text: #{$a11y-active-text};
+  --a11y-accent: #{$a11y-accent};
+  --a11y-warn-bg: #{$a11y-warn-bg};
+  --a11y-warn-text: #{$a11y-warn-text};
+  --a11y-danger-bg: #{$a11y-danger-bg};
+  --a11y-danger-text: #{$a11y-danger-text};
+  // A host can build its own type scale on this: font-size: calc(1rem * var(--a11y-scale-ratio)).
+  // applyTextScale() overwrites it from the injected <style> tag.
+  --a11y-scale-ratio: 1;
   --a11y-shadow: #{$a11y-shadow};
   --a11y-shadow-btn: #{$a11y-shadow-btn};
   --a11y-radius: #{$a11y-radius};

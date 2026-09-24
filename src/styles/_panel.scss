@@ -12,14 +12,14 @@
   z-index: v.$a11y-z;
   width: v.$a11y-panel-width;
   max-height: calc(100vh - 120px);
-  background-color: v.$a11y-bg;
+  background-color: var(--a11y-bg);
   border-radius: v.$a11y-radius;
   box-shadow: v.$a11y-shadow;
-  border: 1px solid v.$a11y-border;
+  border: 1px solid var(--a11y-border);
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  color: v.$a11y-text;
+  color: var(--a11y-text);
   // Use CSS custom property so host-app font var takes precedence at runtime
   font-family: var(--a11y-font-ui);
 
@@ -45,7 +45,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 16px 18px 12px;
-  border-bottom: 1px solid v.$a11y-border;
+  border-bottom: 1px solid var(--a11y-border);
   flex-shrink: 0;
 }
 
@@ -53,7 +53,7 @@
   font-family: var(--a11y-font-heading);
   font-size: 15px;
   font-weight: 700;
-  color: v.$a11y-text;
+  color: var(--a11y-text);
   margin: 0;
   display: flex;
   align-items: center;
@@ -62,7 +62,7 @@
   .a11y-icon {
     width: 18px;
     height: 18px;
-    color: v.$a11y-primary;
+    color: var(--a11y-accent);
   }
 }
 
@@ -81,7 +81,7 @@
   border-radius: 8px;
   font-family: var(--a11y-font-ui);
   font-size: 12px;
-  color: v.$a11y-text-muted;
+  color: var(--a11y-text-muted);
   transition: v.$a11y-transition;
   display: flex;
   align-items: center;
@@ -101,16 +101,16 @@
 .a11y-panel__reset {
   @include _panel-action-btn;
   &:hover {
-    background-color: #fff3cd;
-    color: #856404;
+    background-color: var(--a11y-warn-bg);
+    color: var(--a11y-warn-text);
   }
 }
 
 .a11y-panel__close {
   @include _panel-action-btn;
   &:hover {
-    background-color: #fde8e8;
-    color: #dc3545;
+    background-color: var(--a11y-danger-bg);
+    color: var(--a11y-danger-text);
   }
 }
 
@@ -121,13 +121,13 @@
   flex: 1;
   padding: 14px 14px 8px;
   scrollbar-width: thin;
-  scrollbar-color: v.$a11y-border transparent;
+  scrollbar-color: var(--a11y-border) transparent;
 
   &::-webkit-scrollbar {
     width: 4px;
   }
   &::-webkit-scrollbar-thumb {
-    background: v.$a11y-border;
+    background: var(--a11y-border);
     border-radius: 4px;
   }
 }
@@ -135,7 +135,7 @@
 // ── Footer ────────────────────────────────────────────────────────────────────
 .a11y-panel__footer {
   padding: 10px 14px 14px;
-  border-top: 1px solid v.$a11y-border;
+  border-top: 1px solid var(--a11y-border);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -145,9 +145,9 @@
 .a11y-panel__footer-badge {
   font-family: var(--a11y-font-ui);
   font-size: 11px;
-  color: v.$a11y-text-muted;
-  background: v.$a11y-bg-hover;
-  border: 1px solid v.$a11y-border;
+  color: var(--a11y-text-muted);
+  background: var(--a11y-bg-hover);
+  border: 1px solid var(--a11y-border);
   border-radius: 6px;
   padding: 2px 8px;
   letter-spacing: 0.4px;

@@ -1,16 +1,16 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { applyContrast, resetContrast } from '../../src/modules/contrast.js';
 import { applyFont, resetFont } from '../../src/modules/font.js';
 import { applySpacing, resetSpacing } from '../../src/modules/spacing.js';
 import { applyAlign, resetAlign } from '../../src/modules/align.js';
 import { applyCursor, resetCursor } from '../../src/modules/cursor.js';
 import {
-    applyTextScale, clampScale, getScaleBounds, destroyTextScale,
+    applyTextScale, clampScale, getScaleBounds, configureTextScale, destroyTextScale,
 } from '../../src/modules/textScale.js';
 import {
     applyUnderlineLinks, applyKeyboardNav, resetHighlights,
 } from '../../src/modules/highlights.js';
-import { applyHideImages, applyImgCaptions, destroyImages } from '../../src/modules/images.js';
+import { applyHideImages, applyImgCaptions } from '../../src/modules/images.js';
 import {
     applyAnimations, resetAnimations, destroyAnimations,
 } from '../../src/modules/animations.js';
@@ -59,6 +59,8 @@ describe('attribute-only modules', function () {
 });
 
 describe('textScale', function () {
+    const css = () => document.getElementById('a11y-text-scale').textContent;
+
     it('clamps to the advertised bounds', function () {
         const { min, max } = getScaleBounds();
         expect(clampScale(0)).toBe(min);
@@ -67,31 +69,88 @@ describe('textScale', function () {
         expect(max).toBe(200);
     });
 
-    it('writes a scaled style tag and the data attribute', function () {
+    it('multiplies the sizes it measured instead of naming its own', function () {
+        configureTextScale({ scaleBase: 14 });
         applyTextScale(150);
         expect(html().getAttribute('data-a11y-scale')).toBe('150');
-        const style = document.getElementById('a11y-text-scale');
-        expect(style.textContent).toContain('--a11y-scale-ratio: 1.5');
-        expect(style.textContent).toContain('24px');
+        expect(css()).toContain('--a11y-scale-ratio: 1.5');
+        // <html> keeps the root size the page came with (jsdom reports none, so
+        // the 16px fallback), <body> the declared base.
+        expect(css()).toContain('html[data-a11y-scale] { font-size: 24px !important; }');
+        expect(css()).toContain('html[data-a11y-scale] body { font-size: 21px !important; }');
+        destroyTextScale();
+    });
+
+    it('leaves every host element alone', function () {
+        configureTextScale({ scaleBase: 16 });
+        applyTextScale(150);
+        // The old tag rewrote <span>, <p>, <li>, <td> and each heading level to
+        // pixel values of its own choosing; that cascade belongs to the host.
+        expect(css()).not.toMatch(/\bspan\b/);
+        expect(css()).not.toMatch(/\bh[1-6]\b/);
+        expect(css()).not.toMatch(/\bp,|\bli\b|\btd\b|\bth\b/);
+        destroyTextScale();
+    });
+
+    it('keeps the widget UI at the size it was authored at', function () {
+        configureTextScale({ scaleBase: 14 });
+        applyTextScale(200);
+        expect(css()).toContain(
+            'html[data-a11y-scale] .a11y-panel, .a11y-fab, .a11y-tts-prompt, '
+            + '.a11y-skip-link { font-size: 14px; }',
+        );
+        destroyTextScale();
+    });
+
+    it('measures once, so the size it just wrote is never scaled again', function () {
+        const spy = vi.spyOn(window, 'getComputedStyle');
+        configureTextScale({ scaleBase: 'auto' });
+        applyTextScale(120);
+        applyTextScale(150);
+        // Reading <body> twice would feed 120% back into the 150% step, and every
+        // click would compound the one before it.
+        const read = (el) => spy.mock.calls.filter(function (c) { return c[0] === el; }).length;
+        expect(read(document.body)).toBe(1);
+        expect(read(document.documentElement)).toBe(1);
+        expect(css()).toContain('body { font-size: 24px !important; }');
+        spy.mockRestore();
+        destroyTextScale();
     });
 
     it('empties the style tag at 100% instead of leaving an override behind', function () {
+        configureTextScale({ scaleBase: 16 });
         applyTextScale(150);
         applyTextScale(100);
         expect(html().hasAttribute('data-a11y-scale')).toBe(false);
-        expect(document.getElementById('a11y-text-scale').textContent).toBe('');
+        expect(css()).toBe('');
+        destroyTextScale();
     });
 
     it('re-attaches the style tag if the host removed it from head', function () {
+        configureTextScale({ scaleBase: 16 });
         applyTextScale(150);
         document.getElementById('a11y-text-scale').remove();
         applyTextScale(180);
         const style = document.getElementById('a11y-text-scale');
         expect(style).not.toBeNull();
         expect(style.textContent).toContain('--a11y-scale-ratio: 1.8');
+        destroyTextScale();
+    });
+
+    it('carries the CSP nonce onto the tag before it is inserted', function () {
+        configureTextScale({ scaleBase: 16, styleNonce: 'r4nd0m' });
+        applyTextScale(120);
+        const style = document.getElementById('a11y-text-scale');
+        expect(style.getAttribute('nonce')).toBe('r4nd0m');
+        destroyTextScale();
+        configureTextScale({ scaleBase: 16 });
+        applyTextScale(120);
+        expect(document.getElementById('a11y-text-scale').hasAttribute('nonce')).toBe(false);
+        destroyTextScale();
     });
 
     it('destroy removes the injected element entirely', function () {
+        configureTextScale({ scaleBase: 16 });
         applyTextScale(120);
         destroyTextScale();
         expect(document.getElementById('a11y-text-scale')).toBeNull();
@@ -112,13 +171,15 @@ describe('images', function () {
         expect(html().hasAttribute('data-a11y-hide-images')).toBe(false);
     });
 
-    it('injects a caption per non-empty alt and removes it again', function () {
+    it('captions alt text through the attribute, without touching the host DOM', function () {
         fixture();
         applyImgCaptions(true);
-        expect(document.querySelectorAll('.a11y-img-caption')).toHaveLength(1);
         expect(html().getAttribute('data-a11y-img-titles')).toBe('on');
+        // Nothing is injected: the caption is a CSS pseudo-element, so an image
+        // that arrives later is captioned too and a screen reader hears the alt
+        // once. _modifiers.scss turns the attribute into the visible text.
+        expect(document.querySelector('article').children).toHaveLength(2);
         applyImgCaptions(false);
-        expect(document.querySelectorAll('.a11y-img-caption')).toHaveLength(0);
         expect(html().hasAttribute('data-a11y-img-titles')).toBe(false);
     });
 
@@ -126,18 +187,8 @@ describe('images', function () {
         fixture();
         applyImgCaptions(true);
         applyImgCaptions(true);
-        expect(document.querySelectorAll('.a11y-img-caption')).toHaveLength(1);
-    });
-
-    it('destroy sweeps captions even when the flag is already off', function () {
-        fixture();
-        applyImgCaptions(true);
-        applyImgCaptions(false);
-        document.body.querySelector('article').insertAdjacentHTML(
-            'beforeend', '<span class="a11y-img-caption">sisa</span>',
-        );
-        destroyImages();
-        expect(document.querySelectorAll('.a11y-img-caption')).toHaveLength(0);
+        expect(html().getAttribute('data-a11y-img-titles')).toBe('on');
+        expect(document.querySelector('article').children).toHaveLength(2);
     });
 });
 

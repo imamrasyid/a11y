@@ -82,6 +82,18 @@ describe('init', function () {
         A11yWidget.destroy();
     });
 
+    it('hands scaleBase and styleNonce to the text-size control at init', function () {
+        A11yWidget.init({ storageKey: KEY, scaleBase: 14, styleNonce: 'n0nce' });
+        const style = document.getElementById('a11y-text-scale');
+        // At 100% no rules are written, but the tag is already in <head> — a
+        // nonce set after insertion is ignored, so it has to be there from the
+        // first insert to survive a style-src policy.
+        expect(style.getAttribute('nonce')).toBe('n0nce');
+        A11yWidget.setState({ textScale: 150 });
+        expect(style.textContent).toContain('body { font-size: 21px !important; }');
+        A11yWidget.destroy();
+    });
+
     it('keeps a stored choice above the host defaults', function () {
         localStorage.setItem(KEY, JSON.stringify({ font: 'readable' }));
         A11yWidget.init({ storageKey: KEY, defaults: { font: 'default' } });

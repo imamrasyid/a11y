@@ -103,7 +103,7 @@
 @mixin toggle-switch-track {
   width: 34px;
   height: 20px;
-  background-color: v.$a11y-border;
+  background-color: var(--a11y-border);
   border-radius: 10px;
   position: relative;
   flex-shrink: 0;
@@ -124,10 +124,17 @@
 }
 
 // ── Dark mode surface ─────────────────────────────────────────────────────────
+// Only custom properties are re-pointed — every component rule has to read them
+// through var(--a11y-*) for this to have any effect at all.
 @mixin dark-surface {
   --a11y-bg: #{v.$a11y-dark-bg};
   --a11y-bg-hover: #{v.$a11y-dark-bg-hover};
   --a11y-border: #{v.$a11y-dark-border};
   --a11y-text: #{v.$a11y-dark-text};
   --a11y-text-muted: #{v.$a11y-dark-text-muted};
+  --a11y-accent: #{v.$a11y-dark-accent};
+  --a11y-warn-bg: #{v.$a11y-dark-warn-bg};
+  --a11y-warn-text: #{v.$a11y-dark-warn-text};
+  --a11y-danger-bg: #{v.$a11y-dark-danger-bg};
+  --a11y-danger-text: #{v.$a11y-dark-danger-text};
 }

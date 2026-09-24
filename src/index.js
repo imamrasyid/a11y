@@ -28,7 +28,7 @@ import { initI18n, getStrings, t, getAvailableLocales } from './i18n/index.js';
 // Modules
 import { applyContrast, resetContrast } from './modules/contrast.js';
 import {
-    applyTextScale, resetTextScale,
+    applyTextScale, resetTextScale, configureTextScale,
     clampScale, getScaleBounds, destroyTextScale,
 } from './modules/textScale.js';
 import { applyFont, resetFont } from './modules/font.js';
@@ -40,8 +40,7 @@ import {
     resetHighlights, destroyHighlights,
 } from './modules/highlights.js';
 import {
-    applyHideImages, applyImgCaptions,
-    resetImages, destroyImages,
+    applyHideImages, applyImgCaptions, resetImages,
 } from './modules/images.js';
 import {
     applyAnimations, resetAnimations, destroyAnimations,
@@ -160,6 +159,8 @@ function _setTtsStatus(stringKey) {
  * @param {string}  [options.fallbackLang]      Locale to use when `lang` is unknown
  * @param {string[]} [options.contentSelectors] Containers "read page" may read
  * @param {string[]} [options.excludeSelectors] Subtrees "read page" must skip
+ * @param {number|'auto'} [options.scaleBase='auto'] Pixel size text scaling multiplies
+ * @param {string}  [options.styleNonce]  CSP nonce for the injected <style> tag
  * @param {object}  [options.modules]           Per-module enable/disable flags
  * @param {object}  [options.defaults]          Values used when the visitor has no stored choice
  * @param {string[]} [options.migrateFrom]      Legacy storage keys to move onto storageKey
@@ -215,6 +216,14 @@ function init(options) {
     }
 
     // ── DOM ────────────────────────────────────────────────────────────────────
+    // Measured here, once, and never again during this instance's life: the
+    // scale control rewrites <body>'s font size, so re-measuring while applying
+    // it would multiply the widget's own output step after step.
+    configureTextScale({
+        scaleBase: _options.scaleBase,
+        styleNonce: _options.styleNonce,
+    });
+
     const strings = getStrings();
     mountAnnouncer();
 
@@ -292,11 +301,10 @@ function destroy() {
     resetCursor();
     resetReadingGuide();
 
-    // Remove injected style elements
+    // Detach elements the modules injected outside the panel
     destroyTextScale();
     destroyAlign();
     destroyHighlights();
-    destroyImages();
     destroyAnimations();
     destroyReadingGuide();
 

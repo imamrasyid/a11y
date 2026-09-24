@@ -44,12 +44,16 @@ html[data-a11y-underline-headers="on"] {
   }
 }
 
-// ── Image alt captions (injected by images.js) ────────────────────────────────
-.a11y-img-caption {
+// ── Image alt captions ────────────────────────────────────────────────────────
+// Pseudo-element, not injected markup: images that arrive after init are
+// captioned without a MutationObserver, nothing is added to the host's DOM, and
+// a screen reader still hears the alt once instead of twice.
+html[data-a11y-img-titles="on"] img[alt]:not([alt=""])::after {
+  content: attr(alt);
   display: block;
   font-family: var(--a11y-font-ui);
   font-size: 11px;
-  color: v.$a11y-text-muted;
+  color: var(--a11y-text-muted);
   text-align: center;
   margin-top: 4px;
   font-style: italic;
@@ -57,6 +61,9 @@ html[data-a11y-underline-headers="on"] {
 
 // ── Highlight hover ───────────────────────────────────────────────────────────
 html[data-a11y-highlight-focus="on"] {
+  // :not() carries the widget's own UI out of the rule instead of adding a
+  // second block that un-styles it — the FAB is a <button> too, and its own
+  // hover elevation was being flattened by the blanket override.
   a,
   button,
   input,
@@ -65,20 +72,10 @@ html[data-a11y-highlight-focus="on"] {
   label,
   [role="button"],
   [tabindex] {
-    &:hover {
+    &:hover:not(.a11y-fab, .a11y-panel *, .a11y-tts-prompt *, .a11y-skip-link) {
       outline: 2px solid v.$a11y-primary !important;
       outline-offset: 2px !important;
       box-shadow: 0 0 0 4px rgba(v.$a11y-primary, 0.15) !important;
-    }
-  }
-
-  // Exclude the widget itself
-  .a11y-panel,
-  .a11y-fab {
-    a:hover,
-    button:hover {
-      outline: none !important;
-      box-shadow: revert !important;
     }
   }
 }
@@ -95,6 +92,12 @@ html[data-a11y-keyboard="on"] {
   [role="link"],
   [role="menuitem"],
   [role="tab"] {
+    // Ported from the legacy widget: sites commonly kill their own focus
+    // outline (`a { outline: 0 }`) and mark the result as important. Clearing
+    // that declaration first is what lets the ring below win on every element,
+    // not only on the ones a site left alone.
+    outline: none !important;
+
     &:focus-visible {
       @include m.focus-ring-strong(v.$a11y-primary);
     }
@@ -147,13 +150,13 @@ html[data-a11y-align="left"] {
   h6,
   blockquote,
   figcaption {
-    text-align: left !important;
-  }
-
-  // Keep widget layout intact
-  .a11y-panel,
-  .a11y-panel * {
-    text-align: revert !important;
+    // The widget's own layout stays out of the sweep. The previous block tried to
+    // undo it with `text-align: revert` on `.a11y-panel *`, which rolls the
+    // cascade back past *our* declarations too — the centred text-size readout
+    // and the option labels lost their alignment while the setting was on.
+    &:not(.a11y-panel, .a11y-panel *, .a11y-tts-prompt, .a11y-tts-prompt *) {
+      text-align: left !important;
+    }
   }
 }
 
@@ -223,9 +226,19 @@ html[data-a11y-cursor="black"] button {
   border-bottom: 2px solid rgba(v.$a11y-primary, 0.35);
   pointer-events: none;
   z-index: calc(#{v.$a11y-z} - 1);
+
+  // Off-screen as well as unrendered: `display: none` alone leaves the element
+  // at the top of the viewport, so a host stylesheet that re-asserts `display`
+  // (a print rule, a CSS reset with higher specificity) would flash a stray
+  // blue bar across the page.
   display: none;
+  visibility: hidden;
+  opacity: 0;
+  top: -100px;
 }
 
 html[data-a11y-reading-guide="on"] .a11y-reading-guide {
   display: block;
+  visibility: visible;
+  opacity: 1;
 }
