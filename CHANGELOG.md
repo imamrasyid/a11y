@@ -263,6 +263,34 @@ versi mengikuti [Semantic Versioning](https://semver.org/lang/id/).
   absolut tidak ikut membesar, dan sebuah widget aksesibilitas bukan klaim
   conform — halaman aslinya tetap harus lolos WCAG sendiri.
 
+### Dihapus
+
+- Widget berkas tunggal `a11y.js` / `a11y.css` di akar repo. Paket
+  `@a11y-widget/core` menutupi seluruh fungsinya, dan berkas lama masih bisa
+  diambil dari commit `d7a6b47`. Yang ikut hilang dan memang sengaja tidak
+  dibawa:
+  - ikon Font Awesome (`<i class="fas fa-universal-access">` dan kawannya di FAB,
+    panel, prompt) — paket ini memakai SVG inline, jadi tidak ada lagi
+    stylesheet ikon yang harus dimuat dari CDN;
+  - `enableSpeakLinks()` (tautan dibacakan saat hover) dan `enableTabNav()`
+    (dibacakan saat Tab mendarat) — keduanya berebut dengan pembaca layar milik
+    pengunjung sendiri; satu-satunya perilaku otomatis yang dibawa adalah
+    `tts.autoSpeak: 'selection'`;
+  - sorotan per kata saat membacakan (`highlightWord`/`splitText`/`getTextNodes`)
+    — yang tersisa sorotan per blok, tanpa memecah-mecah node teks milik host;
+  - aturan untuk kelas milik satu portal saja: `.weather-popup*`,
+    `.default-section-title`, `.default-section-title-middle`,
+    `.news-card-title` — sebuah paket tidak mengatur markup yang bukan miliknya;
+    situs yang masih butuh menuliskan aturannya sendiri;
+  - atribut warisan kedua, `data-a11y-animations-user` — pilihan eksplisit
+    sekarang hidup sebagai `state.animationsExplicit` yang ikut dipersist;
+  - string dan kunci yang mengunci widget ke satu situs (`kebumen_a11y`, teks
+    sambutan Kebumen, hostname di dalam prompt izin) — kini lewat `migrateFrom`,
+    `welcomeText`, dan locale pack;
+  - sapuan ukuran teks yang menulis ulang `span`, `p`, `li`, `td` dan tiap heading
+    ke piksel karyanya sendiri — diganti pengali ukuran dasar halaman pada rilis
+    ini.
+
 ## [1.0.0]
 
 Ekstraksi pertama widget aksesibilitas dari berkas tunggal portal pemerintah
