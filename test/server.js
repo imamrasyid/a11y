@@ -45,4 +45,8 @@ const server = http.createServer(function (req, res) {
 
 server.listen(PORT, '127.0.0.1', function () {
     console.log(`[a11y-test-server] http://127.0.0.1:${PORT}/test/fixtures/playground.html`);
+    // `npm run demo` passes the page a human should get; the e2e run passes none.
+    if (process.argv[3]) {
+        console.log(`[a11y-test-server] http://127.0.0.1:${PORT}${process.argv[3]}`);
+    }
 });

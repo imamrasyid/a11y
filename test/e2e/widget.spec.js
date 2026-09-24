@@ -93,9 +93,20 @@ test.describe('what the controls paint', function () {
             return getComputedStyle(document.querySelector(args[0]))[args[1]];
         }, [selector, property]);
     };
+    /**
+     * Reports the caption of an image the way a visitor meets it: the text that
+     * is there, and whether it occupies space. A computed `content` on a
+     * pseudo-element would have said "captioned" while nothing painted, which is
+     * exactly how the CSS-only version of this feature passed tests for a while.
+     */
     const caption = function (page, selector) {
         return page.evaluate(function (s) {
-            return getComputedStyle(document.querySelector(s), '::after').content;
+            const img = document.querySelector(s);
+            const next = img && img.nextElementSibling;
+            if (!next || !next.classList.contains('a11y-img-caption')) { return 'none'; }
+            const box = next.getBoundingClientRect();
+            return next.textContent + '|' + (box.height > 0 ? 'painted' : 'no-box')
+                + '|' + (next.getAttribute('aria-hidden') === 'true' ? 'silent' : 'spoken');
         }, selector);
     };
 
@@ -108,28 +119,38 @@ test.describe('what the controls paint', function () {
         // Text the site pinned to an absolute size is left alone: the sweep that
         // rewrote every <span> on the page is gone for good.
         expect(await fontSize(page, '#hostNote')).toBe('11px');
-        // And the widget keeps the layout it was authored with at either end.
+        // The widget's own UI is pinned back to the page's base size, and keeps
+        // its internal type scale while it is.
         expect(await fontSize(page, '.a11y-panel__body')).toBe('13px');
         expect(await fontSize(page, '.a11y-opt__label')).toBe('10.5px');
     });
 
-    test('alt captions are drawn by CSS, including for an image that arrives late', async function ({ page }) {
+    test('alt captions appear under the picture, including one that arrives late', async function ({ page }) {
         await page.evaluate('A11yWidget.setState({ imgTitles: true })');
-        expect(await caption(page, 'article img[alt]')).toContain('Gedung pelayanan publik');
+        expect(await caption(page, 'article img[alt]'))
+            .toBe('Gedung pelayanan publik dengan antrean warga|painted|silent');
         // An empty alt means a decorative image: nothing appears under it.
         expect(await caption(page, 'article img[alt=""]')).toBe('none');
 
-        const before = await page.evaluate('document.querySelector("article").children.length');
+        const pictures = page.locator('article img');
+        const before = await pictures.count();
         await page.click('#dynamic-add');
-        expect(await page.evaluate('document.querySelector("article").children.length')).toBe(before + 1);
-        expect(await caption(page, 'article img:last-child')).toContain('Gambar yang disuntikkan setelah render awal');
-        // No markup of ours was inserted anywhere, so a screen reader still hears
-        // each alt once.
-        expect(await page.evaluate('document.querySelectorAll("[class*=a11y-img]").length')).toBe(0);
-        // Hiding pictures hides their caption with them — the pseudo-element
-        // inherits the visibility of the image it hangs off.
-        await page.evaluate('A11yWidget.setState({ hideImages: true })');
+        expect(await pictures.count()).toBe(before + 1);
+        // Captioned without a rescan being asked for: the module is watching.
+        expect(await caption(page, 'article img:nth-of-type(' + (before + 1) + ')'))
+            .toBe('Gambar yang disuntikkan setelah render awal|painted|silent');
+
+        // Turning the setting back off takes the inserted text out of the DOM, so
+        // the page is left as the site wrote it.
+        await page.evaluate('A11yWidget.setState({ imgTitles: false })');
+        expect(await page.evaluate('document.querySelectorAll(".a11y-img-caption").length')).toBe(0);
+
+        // Hiding pictures collapses their captions with them, and the text is
+        // still there to come back when the pictures do.
+        await page.evaluate('A11yWidget.setState({ imgTitles: true, hideImages: true })');
         expect(await computed(page, 'article img[alt]', 'visibility')).toBe('hidden');
+        expect(await caption(page, 'article img[alt]'))
+            .toBe('Gedung pelayanan publik dengan antrean warga|no-box|silent');
     });
 
     test('keyboard mode puts back a focus ring the site switched off', async function ({ page }) {
@@ -185,6 +206,20 @@ test.describe('accessibility of the widget itself', function () {
             expect(results.violations.map(function (v) { return v.id + ': ' + v.description })).toEqual([]);
         });
     }
+
+    // Dark mode only became real when the surface tokens moved to var(): this is
+    // the scan that shows the dark palette is legible, not merely painted.
+    test('panel is clean in the dark colour scheme', async function ({ page }) {
+        await page.click('#a11yFab');
+        await waitForPanelSettle(page);
+        await page.emulateMedia({ colorScheme: 'dark' });
+        await waitForPanelSettle(page);
+        const results = await new AxeBuilder({ page })
+            .include('#a11yPanel')
+            .include('#a11yFab')
+            .analyze();
+        expect(results.violations.map(function (v) { return v.id + ': ' + v.description })).toEqual([]);
+    });
 
     test('the fixture page itself is free of violations', async function ({ page }) {
         const results = await new AxeBuilder({ page }).analyze();

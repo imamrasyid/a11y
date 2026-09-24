@@ -41,10 +41,11 @@ versi mengikuti [Semantic Versioning](https://semver.org/lang/id/).
   termasuk pemindaian kontras pada panel widget sendiri dan pada seksi pembaca
   yang sedang aktif).
 - `test/server.js`: server berkas statis tanpa dependensi untuk e2e.
-- Budget ukuran lewat `size-limit` (`dist/a11y-widget.umd.min.js` ≤ 20 kB,
-  `dist/a11y-widget.css` ≤ 8 kB) + skrip `size`, `test`, `test:e2e`,
-  `test:coverage`, `prepack` (build sebelum packing) dan `pack:check`
-  (`npm pack --dry-run`).
+- Budget ukuran lewat `size-limit` (`dist/a11y-widget.umd.min.js` ≤ 13 kB,
+  `dist/a11y-widget.css` ≤ 4 kB; hasil saat ini 12,66 kB dan 3,52 kB brotli, jadi
+  anggarannya cuma menyisakan ruang naik beberapa persen — itulah gunanya) +
+  skrip `size`, `test`, `test:e2e`, `test:coverage`, `prepack` (build sebelum
+  packing) dan `pack:check` (`npm pack --dry-run`).
 - `types/index.d.ts` sekarang menjangkau seluruh API publik (`A11yStrings`
   dengan 53 kunci, `LangOption`, `StateKey`, `PageChunk`, `SetStatePayload`,
   opsi `init`).
@@ -81,10 +82,26 @@ versi mengikuti [Semantic Versioning](https://semver.org/lang/id/).
   `font-size: calc(1rem * var(--a11y-scale-ratio))`.
 - Lima uji e2e yang mengukur hasil render betulan (`what the controls paint`):
   ukuran teks host 13px→26px sementara bagian bertuliskan px absolut dibiarkan,
-  caption gambar hasil pseudo-element (termasuk gambar yang disuntik setelah
-  render awal), reset `outline` milik situs yang dikembalikan modus keyboard,
-  rata-kiri yang tidak meratakan panel, dan mode gelap yang benar-benar
+  caption gambar yang benar-benar menempati ruang (termasuk gambar yang disuntik
+  setelah render awal), reset `outline` milik situs yang dikembalikan modus
+  keyboard, rata-kiri yang tidak meratakan panel, dan mode gelap yang benar-benar
   mengubah permukaan panel. Diukur di Chromium sungguhan, bukan jsdom.
+- `demo/index.html` + `npm run demo`: halaman contoh yang memuat `dist/` lewat tag
+  `<script>` persis seperti situs tanpa bundler, dengan tombol-tombol
+  `setState()` dan tabel atribut `data-a11y-*` yang hidup — jadi terlihat siapa
+  yang menulis atribut dan siapa yang menggambar hasilnya.
+- `test/e2e/demo.spec.js`: demo diuji seperti kode yang dikirim — tanpa
+  `console.error`/`warning` saat mount, tombolnya benar-benar mengubah atribut,
+  panel tidak ikut membesar saat halaman di-zoom, dan axe memindai seluruh
+  halaman itu.
+- Pemindaian axe tambahan: panel dalam `prefers-color-scheme: dark` (bukan hanya
+  dalam mode kontras), karena mode gelap baru hidup di rilis ini.
+- `CONTRIBUTING.md` (kontrak dua lapis atribut/CSS, aturan token dark mode,
+  cara menambah locale, larangan terjemahan mesin tanpa penutur asli, gaya
+  commit), `SECURITY.md` (permukaan yang disentuh: nol dependensi, tanpa
+  jaringan, kunci storage, mana yang ditulis dengan `textContent`), dan
+  `.github/workflows/ci.yml` yang menjalankan semua gate di atas.
+- `.nvmrc` supaya Node yang dipakai developer sama dengan yang di CI.
 
 ### Diperbaiki
 
@@ -153,12 +170,19 @@ versi mengikuti [Semantic Versioning](https://semver.org/lang/id/).
   `#0d6efd` di atas putih 4,50:1 tanpa sisa → `$a11y-accent`
   `#0a58ca` (6,44:1), dengan aksen gelap `#8ab8ff` (6,92:1 di atas `#2a2a3e`).
   Tombol "Izinkan" pada prompt TTS ikut naik dari tepat-4,50 ke 6,44.
-- **Caption gambar tidak lagi menyuntik DOM.** Build lama menambah
+- **Caption gambar diperbaiki, bukan disederhanakan.** Build lama menambah
   `<span class="a11y-img-caption">` di belakang tiap `<img>` saat init: gambar
   yang datang kemudian (ajax, rute SPA, galeri) tidak dapat caption, dan
-  pembaca layar mendengar teks alt dua kali. Kini satu aturan CSS
-  `img[alt]:not([alt=""])::after { content: attr(alt) }` — tanpa observer,
-  tanpa markup tambahan, dan alt kosong (gambar dekoratif) tetap tanpa teks.
+  pembaca layar mendengar teks alt dua kali. Percobaan pertama menggantinya dengan
+  satu aturan CSS `img[alt]::after { content: attr(alt) }` — dan gaya terukur
+  tetap melaporkan teksnya padahal tidak ada satu piksel pun yang digambar:
+  elemen pengganti yang muatannya sudah terpasang tidak menghasilkan kotak
+  `::before`/`::after` di Chromium maupun Firefox. Jadi span sisip kembali dipakai,
+  dengan dua cacat legacy dibereskan: `aria-hidden="true"` sehingga alt tetap
+  terdengar sekali, dan ada pengawas perubahan DOM (`MutationObserver`) selama fiturnya
+  menyala sehingga gambar yang tiba belakangan ikut tercaption. Alt kosong
+  (gambar dekoratif) tetap tanpa teks, dan mematikan fiturnya menghapus semua
+  span yang ia tambah.
 - `text-align: revert !important` pada `.a11y-panel *` tidak hanya membatalkan
   sapuan rata-kiri host — `revert` menarik kembali seluruh origin penulis,
   sehingga deklarasi milik widget ikut hilang (readout ukuran teks kehilangan
@@ -207,9 +231,10 @@ versi mengikuti [Semantic Versioning](https://semver.org/lang/id/).
 - `textScale` tidak lagi menulis ukuran piksel milik sendiri untuk `span`, `p`,
   `li`, `td`, `th` dan tiap level heading. Yang ditulis sekarang cuma `font-size`
   `<html>` dan `<body>` (ukuran dasar terukur × rasio, `!important`),
-  `--a11y-scale-ratio`, dan satu blok yang menahan UI widget tetap pada ukuran
-  tempatnya dibuat. Konsekuensi yang disengaja: teks yang situs kunci ke piksel
-  absolut tidak ikut membesar — cascade itu jadi milik host.
+  `--a11y-scale-ratio`, dan satu blok yang mengembalikan UI widget ke ukuran dasar
+  halaman sehingga panel tidak ikut membesar. Konsekuensi yang disengaja: teks
+  yang situs kunci ke piksel absolut tidak ikut membesar — cascade itu jadi milik
+  host.
 - Ukuran dasar diukur **sekali** saat `init()`. `applyTextScale()` tidak pernah
   membaca `<body>` lagi, karena membaca balik ukuran yang barusan ditulis akan
   menggandakan 120% menjadi 144% lalu 172% dan terus melenceng tiap klik.
@@ -217,13 +242,26 @@ versi mengikuti [Semantic Versioning](https://semver.org/lang/id/).
   `*` akan meratakan skala tipografi panel sendiri (judul 15px, label opsi
   10,5px, readout 12px jadi satu ukuran semua). Yang dipakai blok pin pada empat
   akar UI widget: `.a11y-panel, .a11y-fab, .a11y-tts-prompt, .a11y-skip-link`.
-- Modul gambar murni sakelar atribut: `destroyImages()` dihapus dari permukaan
-  publik (tidak ada lagi yang tertinggal di DOM host untuk dibersihkan), dan
-  `resetImages()` tetap ada.
+- Modul gambar tidak lagi punya `destroyImages()` di permukaan publik:
+  `resetImages()` sudah melepas atribut, span caption, dan pengawasnya, dan itu
+  yang dilalui `destroy()`. Yang tersisa cuma `applyHideImages`,
+  `applyImgCaptions`, dan `resetImages`.
 - `playwright.config.js`: satu worker dan retries di CI setelah satu uji
   keyboard terbukti flaky saat berjalan paralel.
 - README: tautan `npm install` dan CDN yang menunjuk paket belum terbit diganti
   catatan "belum dipublish".
+- README tidak lagi menyuruh `import ... from "@a11y-widget/core/src/core/storage.js"`:
+  jalur dalam `src/` memang tidak ada di peta `exports`, jadi contoh itu tidak
+  akan pernah selesai di-resolve. Adapter storage cukup objek dengan tiga
+  metode — `sessionStorage` sendiri sudah sah — dan hanya `.` / `./css` /
+  `./scss` / `./dist/*` yang dijamin.
+- Catatan "Dark mode" di README diperjelas: yang ikut skema sistem adalah kaca
+  panel itu sendiri, bukan halaman situs; mode kontras dari panel adalah hal lain.
+  Tabel atribut kini punya kolom "siapa yang bertindak" dan memuat
+  `data-a11y-img-titles` yang sebelumnya hilang dari dokumentasi.
+- Dua batasan ditulis apa adanya di README: teks yang situs kunci ke piksel
+  absolut tidak ikut membesar, dan sebuah widget aksesibilitas bukan klaim
+  conform — halaman aslinya tetap harus lolos WCAG sendiri.
 
 ## [1.0.0]
 

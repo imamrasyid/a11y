@@ -46,6 +46,7 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
+    "demo": "node test/server.js 4173 /demo/index.html",
     "size": "size-limit",
     "prepack": "npm run build",
     "pack:check": "npm pack --dry-run",
@@ -55,12 +56,12 @@
     {
       "name": "umd-min-js",
       "path": "dist/a11y-widget.umd.min.js",
-      "limit": "20 kB"
+      "limit": "13 kB"
     },
     {
       "name": "css",
       "path": "dist/a11y-widget.css",
-      "limit": "8 kB"
+      "limit": "4 kB"
     }
   ],
   "devDependencies": {

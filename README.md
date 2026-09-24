@@ -54,6 +54,54 @@ A11yWidget.init({ lang: "id", position: "bottom-right" });
 
 That's it. The widget mounts a FAB button and accessibility panel into `document.body`.
 
+One instance per page: a second `init()` warns on the console and does nothing.
+Call `A11yWidget.destroy()` first if your app tears the widget down between
+routes.
+
+### Try it without installing
+
+```bash
+npm run build && npm run demo
+```
+
+opens a page at `http://127.0.0.1:4173/demo/` that mounts the built UMD bundle
+exactly the way a script-tag site does, with buttons that call `setState()` so
+you can watch which attribute each control writes.
+
+---
+
+## What this widget is not
+
+It is not a conformance claim. The widget hands visitors controls over how your
+page is rendered; WCAG 2.1 AA is still about the page underneath — real headings,
+labels on every field, source contrast that already passes, a focus order that
+makes sense, and alt text that describes the picture. A panel of switches on top
+of markup that fails those things is a workaround, and one a visitor who needs it
+has to find.
+
+Concretely: text scaling through this widget reaches 200 %, but it does not
+release your site from 1.4.4 *Resize Text* — browser zoom has to keep working on
+its own, and text your CSS pins to absolute pixels will not grow here either.
+
+What is verified, in this repository's own test run:
+
+- the widget's panel, FAB and reader controls, scanned by axe-core in four
+  contrast modes and in the dark colour scheme, with zero violations;
+- the demo/fixture pages the docs point at, scanned the same way;
+- contrast token pairs measured at AA ratios for both light and dark surfaces;
+- announced state changes, focus return, keyboard operability, and that stopping
+  the reader really stops it.
+
+What is not, and cannot be: whether *your* page reads correctly, whether your
+alt text is accurate, or whether your own components are keyboard-operable. The
+tooling in `package.json` (`lint`, `test`, `test:e2e`, `typecheck`, `size`) is
+what covers the widget itself.
+
+A few controls restyle everything on the page, including regions you may not want
+touched: `align: "left"` and the highlight switches are sweeps with
+`:not()` exclusions for the widget's own UI, but nothing else is exempt. Test
+them against your layout before shipping.
+
 ---
 
 ## Options
@@ -83,6 +131,27 @@ A11yWidget.init({
   // Base locale for partial string overrides
   baseLang: "id",
 
+  // Locale whose strings are used when `lang` has no string pack of its own.
+  // `lang: 'jv'` still selects a Javanese voice; the panel then speaks `baseLang`.
+  fallbackLang: "id",
+
+  // Which containers "read page" may read, most specific first. The first list
+  // that holds text wins.
+  contentSelectors: ["main", "article", "[role=main]"],
+
+  // Subtrees skipped inside those containers — navigation, footers, adverts.
+  // An unparsable rule is dropped with a console warning, never fatal.
+  excludeSelectors: ["nav", "footer", "[role=banner]", ".iklan"],
+
+  // Pixel size the text-size control multiplies. 'auto' (default) measures
+  // getComputedStyle(document.body).fontSize once per init(), falling back to the
+  // root size and then to 16px. A number fixes the base without measuring.
+  scaleBase: "auto",
+
+  // CSP nonce for the <style> tag the text-size control injects. Needed when your
+  // style-src policy trusts only nonced styles. See "Content Security Policy".
+  styleNonce: typeof window !== "undefined" ? window.__csp_nonce__ : undefined,
+
   // Disable specific modules (all enabled by default)
   modules: {
     tts: true,
@@ -104,11 +173,16 @@ A11yWidget.init({
 
   // Starting values for a visitor with no stored preferences. A preference the
   // visitor has already saved always wins — changing these in a deploy will not
-  // undo what they picked.
+  // undo what they picked. `tts` merges one level deep.
   defaults: {
     contrast: "none",
     textScale: 100,
-    tts: { enabled: false },
+    tts: {
+      enabled: false,
+      // 'selection' speaks whatever the visitor selects with the mouse. Off by
+      // default because a screen reader already announces selections.
+      autoSpeak: "none",
+    },
   },
 
   // Inject skip-to-content link (default: true)
@@ -219,10 +293,21 @@ A11yWidget.tts.revokePermission();
 A11yWidget.tts.addReplacements([
   { search: /\bPT\b/gi, replace: 'Perseroan Terbatas', lang: 'id' },
 ]);
-A11yWidget.tts.setReplacements([...]);  // replace all rules
-A11yWidget.tts.resetReplacements();     // back to built-in defaults
-A11yWidget.tts.getReplacements();       // → ReplacementRule[]
+A11yWidget.tts.setReplacements([...]);  // replace the rules you added
+A11yWidget.tts.resetReplacements();     // drop them; built-in and locale rules stay
+A11yWidget.tts.getReplacements();       // → ReplacementRule[] (your layer only)
 ```
+
+The panel's reader section is a full transport — read page, pause, resume, stop —
+with a rate slider (0,5×–2,0×), a voice list filled from `getVoices()` and
+`voiceschanged`, and a `role="status"` line that says what happened. Transport
+buttons are disabled rather than hidden while idle, so the section never changes
+height mid-read.
+
+Nothing speaks until the visitor allows it. The first request shows an in-page
+prompt whose answer is kept in `sessionStorage`, so a page reload inside one
+session does not ask again. If `speechSynthesis` is missing entirely, the reader
+section is not rendered at all.
 
 ---
 
@@ -242,27 +327,39 @@ A11yWidget.init({
 });
 ```
 
+`id` and `en` ship complete packs (67 keys each — parity is a unit test), and
+every pack carries its own `speechRules`, so `Rp.` or `DPRD` is only ever spoken
+where it belongs. A locale code without a pack is still accepted: `lang: 'jv'`
+selects a Javanese voice while the panel falls back to `baseLang`, with a
+`console.warn` telling you why.
+
+```js
+A11yWidget.getAvailableLocales(); // → ['id', 'en']
+A11yWidget.DEFAULTS;              // the state a first-time visitor starts from
+```
+
 ---
 
 ## Custom storage
 
 ```js
-// Use sessionStorage instead of localStorage
-import { createSessionStorageAdapter } from "@a11y-widget/core/src/core/storage.js";
+// Use sessionStorage instead of localStorage — anything with the three methods
+// is accepted, including the built-in objects themselves.
+A11yWidget.init({ storage: sessionStorage });
 
-A11yWidget.init({
-  storage: createSessionStorageAdapter(),
-});
-
-// Or bring your own adapter
+// Or bring your own adapter (back it with a cookie, IndexedDB, your user API…)
 A11yWidget.init({
   storage: {
-    getItem: (key) => myStore.get(key),
+    getItem: (key) => myStore.get(key) ?? null,
     setItem: (key, value) => myStore.set(key, value),
     removeItem: (key) => myStore.delete(key),
   },
 });
 ```
+
+Internal modules are not exported paths: import `@a11y-widget/core`, the
+`/css` subpath, and `/scss`. Deep imports into `src/` are free to change between
+minor versions.
 
 ---
 
@@ -300,46 +397,105 @@ All visual tokens are CSS variables on `:root`. Override any of them after impor
 
 ### Dark mode
 
-The stylesheet responds to `prefers-color-scheme: dark` automatically.
-You can also force dark mode with a class or attribute on `<html>` or `<body>`:
+This is the widget's own chrome, not your page's theme: the panel, FAB and
+prompt follow `prefers-color-scheme: dark`, and you can force it the same way
+many sites do — `html[data-theme="dark"]`, `html.dark`, `html.dark-mode` or
+`body.dark-mode` all re-point the surface tokens. Setting a contrast mode in the
+panel ("Terbalik", "Cerah", "Grayscale") restyles the whole page and is a
+different thing.
 
-```html
-<html data-theme="dark">
-  <!-- or -->
-  <body class="dark-mode"></body>
-</html>
+Every surface token is a custom property, so a theme of your own only has to
+override variables:
+
+```css
+:root {
+  --a11y-bg: #ffffff;
+  --a11y-text: #1a1a2e;
+  --a11y-accent: #0a58ca; /* used where brand colour carries text */
+  --a11y-warn-bg: #fff3cd;
+  --a11y-warn-text: #856404;
+  --a11y-danger-bg: #fde8e8;
+  --a11y-danger-text: #b02531;
+}
 ```
+
+### Text scaling: what grows, and what does not
+
+The control multiplies the page's own sizes; it never names new ones. It writes
+`font-size` on `<html>` (so `rem` follows) and on `<body>` (so inherited sizes
+and `em` follow), both derived from the base it measured at `init()`, plus
+`--a11y-scale-ratio` for a host that drives its own type scale:
+
+```css
+.card__title { font-size: calc(1.25rem * var(--a11y-scale-ratio)); }
+```
+
+Two consequences are deliberate:
+
+- Text your site pins to an absolute pixel size below `<body>` (`.note {
+  font-size: 11px }`) does **not** grow. The old build rewrote `span`, `p`, `li`,
+  `td` and every heading level to pixel values of its own choosing to force this;
+  that cascade belongs to the host now. Use `rem` for body copy if you want the
+  control to reach it.
+- The widget's own UI is pinned back to the base size, so the panel does not
+  inflate along with the article behind it.
+
+### Content Security Policy
+
+The text-size control injects one `<style>` element — the only stylesheet the
+widget ever adds to your `<head>`. Under a `style-src` policy that trusts only
+nonced styles, pass the page's nonce and it is set before the element is
+inserted (a nonce applied after insertion is ignored by the browser):
+
+```js
+A11yWidget.init({ styleNonce: document.querySelector('script[nonce]').nonce });
+```
+
+Everything else the widget does goes through attributes and classes on elements
+it owns, so it needs no `unsafe-inline` for styles. The widget makes no network
+requests and has no runtime dependencies.
 
 ### Data attributes reference
 
-The widget sets these attributes on `<html>` — you can target them in your own CSS for deeper customisation:
+The widget sets these attributes on `<html>` — you can target them in your own
+CSS for deeper customisation. The last column says who acts: `CSS` means the
+attribute alone is styled by the stylesheet, `JS` means a module also writes or
+moves nodes for it.
 
-| Attribute                     | Values                             |
-| ----------------------------- | ---------------------------------- |
-| `data-a11y-contrast`          | `bright` · `reverse` · `grayscale` |
-| `data-a11y-font`              | `readable`                         |
-| `data-a11y-spacing`           | `wide`                             |
-| `data-a11y-align`             | `left`                             |
-| `data-a11y-scale`             | `70`–`200` (numeric)               |
-| `data-a11y-cursor`            | `white` · `black`                  |
-| `data-a11y-animations`        | `on` · `off`                       |
-| `data-a11y-underline-links`   | `on`                               |
-| `data-a11y-underline-headers` | `on`                               |
-| `data-a11y-highlight-focus`   | `on`                               |
-| `data-a11y-hide-images`       | `on`                               |
-| `data-a11y-keyboard`          | `on`                               |
-| `data-a11y-reading-guide`     | `on`                               |
+| Attribute                     | Values                              | Reacts    |
+| ----------------------------- | ----------------------------------- | --------- |
+| `data-a11y-contrast`          | `bright` · `reverse` · `grayscale`  | CSS       |
+| `data-a11y-font`              | `readable`                          | CSS       |
+| `data-a11y-spacing`           | `wide`                              | CSS       |
+| `data-a11y-align`             | `left`                              | CSS       |
+| `data-a11y-scale`             | `70`–`200` (numeric)                | JS        |
+| `data-a11y-cursor`            | `white` · `black`                   | CSS       |
+| `data-a11y-animations`        | `on` · `off`                        | CSS       |
+| `data-a11y-underline-links`   | `on`                                | CSS       |
+| `data-a11y-underline-headers` | `on`                                | CSS       |
+| `data-a11y-img-titles`        | `on`                                | JS        |
+| `data-a11y-highlight-focus`   | `on`                                | CSS       |
+| `data-a11y-hide-images`       | `on`                                | CSS       |
+| `data-a11y-keyboard`          | `on`                                | CSS       |
+| `data-a11y-reading-guide`     | `on`                                | JS        |
+
+`data-a11y-img-titles` is the one control that cannot be pure CSS: a loaded
+replaced element generates no `::before`/`::after` box in Chromium or Firefox, so
+`img::after { content: attr(alt) }` computes a value and paints nothing. The
+module inserts a `<span class="a11y-img-caption" aria-hidden="true">` after each
+picture with a non-empty alt — `aria-hidden` because the image already announces
+that text once — and watches the DOM while the setting is on, so a picture that
+arrives later is captioned too. Turning the setting off removes every span it
+added.
 
 ---
 
-## Build
+## Build output
 
 ```bash
 npm install
 npm run build
 ```
-
-Output in `dist/`:
 
 | File                     | Format       | Use case                      |
 | ------------------------ | ------------ | ----------------------------- |
@@ -348,6 +504,28 @@ Output in `dist/`:
 | `a11y-widget.umd.js`     | UMD          | Script tag, AMD               |
 | `a11y-widget.umd.min.js` | UMD minified | Production CDN                |
 | `a11y-widget.css`        | CSS          | All environments              |
+
+Size is checked in CI against a budget (`npm run size`, brotli): the UMD build
+and the stylesheet are held under 13 kB and 4 kB respectively, with only a few
+percent of headroom over what ships today. Zero runtime dependencies — anything
+under `devDependencies` stays out of the bundle.
+
+---
+
+## Development
+
+```bash
+npm run lint         # ESLint over src/ and test/
+npm test             # Vitest + jsdom
+npm run test:e2e     # Playwright + axe-core against test/fixtures and demo/
+npm run typecheck    # consumer-side check of types/index.d.ts
+npm run size         # budgets above
+npm run pack:check   # what would actually ship in the tarball
+npm run demo         # static server on 127.0.0.1:4173, prints the demo URL
+```
+
+Contributing notes, the conventions a change has to follow, and how to add a
+locale are in [CONTRIBUTING.md](CONTRIBUTING.md). Security reports: [SECURITY.md](SECURITY.md).
 
 ---
 

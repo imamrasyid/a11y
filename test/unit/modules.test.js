@@ -10,7 +10,7 @@ import {
 import {
     applyUnderlineLinks, applyKeyboardNav, resetHighlights,
 } from '../../src/modules/highlights.js';
-import { applyHideImages, applyImgCaptions } from '../../src/modules/images.js';
+import { applyHideImages, applyImgCaptions, resetImages } from '../../src/modules/images.js';
 import {
     applyAnimations, resetAnimations, destroyAnimations,
 } from '../../src/modules/animations.js';
@@ -92,7 +92,7 @@ describe('textScale', function () {
         destroyTextScale();
     });
 
-    it('keeps the widget UI at the size it was authored at', function () {
+    it('keeps the widget UI at the size the page gave it', function () {
         configureTextScale({ scaleBase: 14 });
         applyTextScale(200);
         expect(css()).toContain(
@@ -161,8 +161,13 @@ describe('textScale', function () {
 describe('images', function () {
     function fixture() {
         document.body.innerHTML =
-            '<article><img src="a.png" alt="Gedung pelayanan"><img src="b.png" alt=""></article>';
+            '<article>'
+            + '<img id="a" src="a.png" alt="Gedung pelayanan">'
+            + '<img id="b" src="b.png" alt="">'
+            + '</article>';
     }
+
+    const captions = () => Array.from(document.querySelectorAll('.a11y-img-caption'));
 
     it('hides images through the data attribute only', function () {
         applyHideImages(true);
@@ -171,24 +176,66 @@ describe('images', function () {
         expect(html().hasAttribute('data-a11y-hide-images')).toBe(false);
     });
 
-    it('captions alt text through the attribute, without touching the host DOM', function () {
+    it('puts one caption under each picture that carries alt text', function () {
         fixture();
         applyImgCaptions(true);
         expect(html().getAttribute('data-a11y-img-titles')).toBe('on');
-        // Nothing is injected: the caption is a CSS pseudo-element, so an image
-        // that arrives later is captioned too and a screen reader hears the alt
-        // once. _modifiers.scss turns the attribute into the visible text.
-        expect(document.querySelector('article').children).toHaveLength(2);
+        expect(captions()).toHaveLength(1);
+        expect(captions()[0].textContent).toBe('Gedung pelayanan');
+        // The alt is announced by the image itself; a screen reader hearing the
+        // inserted text too would hear every picture twice.
+        expect(captions()[0].getAttribute('aria-hidden')).toBe('true');
+        // Direct sibling of the picture, so it stays with it in any layout.
+        expect(captions()[0].previousElementSibling.id).toBe('a');
         applyImgCaptions(false);
         expect(html().hasAttribute('data-a11y-img-titles')).toBe(false);
     });
 
-    it('is idempotent when toggled twice', function () {
+    it('leaves the host markup as it found it once the setting is off', function () {
         fixture();
         applyImgCaptions(true);
-        applyImgCaptions(true);
-        expect(html().getAttribute('data-a11y-img-titles')).toBe('on');
+        applyImgCaptions(false);
+        expect(captions()).toHaveLength(0);
         expect(document.querySelector('article').children).toHaveLength(2);
+    });
+
+    it('captions a picture that arrives after the setting was turned on', async function () {
+        fixture();
+        applyImgCaptions(true);
+        const img = document.createElement('img');
+        img.src = 'c.png';
+        img.alt = 'Gambar yang disuntikkan setelah render awal';
+        document.querySelector('article').appendChild(img);
+        // A MutationObserver callback is a microtask, so the caption lands after
+        // this tick — the reason the module watches instead of scanning once.
+        await new Promise(function (resolve) { setTimeout(resolve, 0); });
+        expect(captions()).toHaveLength(2);
+        expect(captions()[1].textContent).toBe('Gambar yang disuntikkan setelah render awal');
+        applyImgCaptions(false);
+        expect(captions()).toHaveLength(0);
+    });
+
+    it('skips pictures inside the widget and never adds a second caption', function () {
+        fixture();
+        const panel = document.createElement('div');
+        panel.className = 'a11y-panel';
+        panel.innerHTML = '<img src="icon.png" alt="Ikon panel">';
+        document.body.appendChild(panel);
+
+        applyImgCaptions(true);
+        applyImgCaptions(true);
+        expect(captions()).toHaveLength(1);
+        expect(captions()[0].previousElementSibling.id).toBe('a');
+    });
+
+    it('resetImages drops both the attributes and the inserted text', function () {
+        fixture();
+        applyHideImages(true);
+        applyImgCaptions(true);
+        resetImages();
+        expect(html().hasAttribute('data-a11y-hide-images')).toBe(false);
+        expect(html().hasAttribute('data-a11y-img-titles')).toBe(false);
+        expect(captions()).toHaveLength(0);
     });
 });
 

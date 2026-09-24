@@ -45,11 +45,17 @@ html[data-a11y-underline-headers="on"] {
 }
 
 // ── Image alt captions ────────────────────────────────────────────────────────
-// Pseudo-element, not injected markup: images that arrive after init are
-// captioned without a MutationObserver, nothing is added to the host's DOM, and
-// a screen reader still hears the alt once instead of twice.
-html[data-a11y-img-titles="on"] img[alt]:not([alt=""])::after {
-  content: attr(alt);
+// The caption is an element images.js inserts, not a pseudo-element: a loaded
+// replaced element generates no ::before/::after box in Chromium or Firefox, so
+// `img::after { content: attr(alt) }` computes a value and paints nothing. The
+// span is aria-hidden because the image already announces its alt once, and it
+// stays hidden unless the setting is on — a span left behind by a host that
+// rebuilt the DOM must not print stray text.
+.a11y-img-caption {
+  display: none;
+}
+
+html[data-a11y-img-titles="on"] .a11y-img-caption {
   display: block;
   font-family: var(--a11y-font-ui);
   font-size: 11px;
@@ -57,6 +63,11 @@ html[data-a11y-img-titles="on"] img[alt]:not([alt=""])::after {
   text-align: center;
   margin-top: 4px;
   font-style: italic;
+}
+
+// A caption belongs to the picture it describes, so it goes away with it.
+html[data-a11y-hide-images="on"] .a11y-img-caption {
+  display: none;
 }
 
 // ── Highlight hover ───────────────────────────────────────────────────────────

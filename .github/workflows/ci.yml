@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Type declarations (consumer-side)
+        run: npm run typecheck
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      - name: Size budgets
+        run: npm run size
+
+      - name: Tarball contents
+        run: npm run pack:check
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Browser tests (Playwright + axe-core)
+        run: npm run test:e2e

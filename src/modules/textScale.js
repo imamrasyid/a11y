@@ -23,8 +23,10 @@ const DEFAULT = 100;
 /** Used when no layout engine can report a size (jsdom) or the host hid <body>. */
 const FALLBACK_PX = 16;
 
-// The widget's own UI is authored in fixed pixels, so it is pinned back to the
-// size it was designed at while the page around it grows.
+// The widget's own UI inherits <body>'s size, so it would grow with the page.
+// Pinning it back to the measured base leaves it the size it had before the
+// setting was touched — while its internal type scale stays intact, because the
+// pin sits on the four roots only.
 const OWN_UI = '.a11y-panel, .a11y-fab, .a11y-tts-prompt, .a11y-skip-link';
 
 /** @type {{ root: number|null, body: number|null }} */

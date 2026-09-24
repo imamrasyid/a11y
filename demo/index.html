@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>a11y-widget — demo</title>
+  <link rel="stylesheet" href="/dist/a11y-widget.css">
+  <style>
+    /* The demo page's own styling. It is deliberately an ordinary site: fixed
+       pixel type sizes, its own focus handling, and content wide enough that the
+       widget's effect is visible on real text. */
+    :root { color-scheme: light dark; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, sans-serif;
+      font-size: 15px;
+      line-height: 1.6;
+      color: #1b1b22;
+      background: #f6f7fb;
+    }
+    a { color: #0a58ca; }
+    .site-header {
+      padding: 14px 20px;
+      background: #ffffff;
+      border-bottom: 1px solid #e2e8f0;
+    }
+    .site-header__title { margin: 0; font-size: 17px; }
+    .site-nav ul { display: flex; gap: 16px; list-style: none; margin: 8px 0 0; padding: 0; }
+    .wrap { max-width: 860px; margin: 0 auto; padding: 24px 20px 64px; }
+    .card {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    .card > h2 { margin-top: 0; font-size: 18px; }
+    .demo-buttons { display: flex; flex-wrap: wrap; gap: 8px; }
+    .demo-buttons button {
+      font: inherit;
+      padding: 8px 12px;
+      border: 1px solid #c9d2e3;
+      border-radius: 8px;
+      background: #ffffff;
+      cursor: pointer;
+    }
+    .demo-buttons button:hover { background: #eef2fb; }
+    .demo-output {
+      min-height: 2.5em;
+      margin: 12px 0 0;
+      padding: 10px 12px;
+      border-radius: 8px;
+      background: #0f1220;
+      color: #e8ecf8;
+      font-family: ui-monospace, monospace;
+      font-size: 13px;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    table { border-collapse: collapse; width: 100%; }
+    caption { text-align: left; font-weight: 700; padding-bottom: 6px; }
+    th, td { border: 1px solid #d7deea; padding: 6px 8px; text-align: left; font-size: 14px; }
+    figure { margin: 0 0 16px; }
+    figure img { max-width: 100%; height: auto; border-radius: 8px; background: #dde5f3; }
+    label { display: block; margin-bottom: 4px; font-weight: 600; }
+    input, select { font: inherit; padding: 6px 8px; margin-bottom: 12px; width: 100%; max-width: 320px; }
+    .footnote { font-size: 12px; color: #5a6472; }
+  </style>
+</head>
+<body>
+  <header class="site-header" id="atas">
+    <p class="site-header__title">Portal layanan contoh</p>
+    <nav class="site-nav" aria-label="Utama">
+      <ul>
+        <li><a href="#demo-api">Coba API</a></li>
+        <li><a href="#konten">Contoh konten</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <main class="wrap">
+    <div class="card">
+      <h1>Coba widget aksesibilitas</h1>
+      <p>
+        Halaman ini memuat hasil build di <code>dist/</code> melalui tag
+        <code>&lt;script&gt;</code> biasa — jalur yang sama dipakai situs tanpa
+        bundler. Tombol bundar di pojok kanan bawah membuka panelnya; setiap
+        pilihan langsung tersimpan dan dipulihkan saat halaman dimuat ulang.
+      </p>
+      <p class="footnote">
+        Panel ini memakai <code>prefers-color-scheme</code> sistem untuk warna
+        gelasnya sendiri, jadi mode gelap pada tampilan sistem akan mengubah
+        wajah panel tanpa mengubah halaman.
+      </p>
+    </div>
+
+    <div class="card" id="demo-api">
+      <h2>Menyetel dari kode, bukan dari panel</h2>
+      <p>
+        Semua kontrol yang ada di panel bisa dijalankan lewat
+        <code>A11yWidget.setState()</code>. Tombol di bawah memanggil API yang
+        sama — hasilnya terlihat pada halaman, pada atribut
+        <code>&lt;html&gt;</code>, dan pada baris readout.
+      </p>
+      <div class="demo-buttons">
+        <button type="button" data-demo='{"contrast":"reverse"}'>Kontras terbalik</button>
+        <button type="button" data-demo='{"textScale":150}'>Teks 150%</button>
+        <button type="button" data-demo='{"keyboard":true}'>Modus keyboard</button>
+        <button type="button" data-demo='{"readingGuide":true}'>Penanda baca</button>
+        <button type="button" data-demo='{"tts":{"enabled":true}}'>Nyalakan pembaca teks</button>
+        <button type="button" data-demo-action="open">Buka panel</button>
+        <button type="button" data-demo-action="reset">Setel ulang</button>
+      </div>
+      <p class="demo-output" id="demoOutput" role="status">Siap.</p>
+    </div>
+
+    <article class="card" id="konten">
+      <h2>Contoh konten</h2>
+      <p>
+        Bagian pelayanan pindah ke gedung baru mulai bulan depan. Warga dapat
+        mengambil nomor antrean mulai pukul 07.30, dan layanan ditutup pukul
+        15.00 WIB. Biaya administrasi sebesar Rp. 25.000 untuk Kab. contoh serta
+        DPRD setempat.
+      </p>
+      <p>
+        Ukuran teks dasar halaman ini 15px dan ditulis dalam piksel pada
+        <code>body</code>. Pengatur ukuran teks mengukurnya sekali saat init,
+        lalu mengalikan angka itu — bukan menebak 16px. Teks yang sebuah situs
+        kunci ke piksel absolut di luar <code>&lt;body&gt;</code> (lihat tabel di
+        bawah) memang tidak ikut membesar; cascade itu tetap milik situs.
+      </p>
+      <figure>
+        <img src="/test/fixtures/pixel.png" alt="Gedung pelayanan publik dengan antrean warga di depan loket" width="320" height="160">
+      </figure>
+      <h3>Jadwal layanan</h3>
+      <table>
+        <caption>Ringkasan jadwal per loket</caption>
+        <thead>
+          <tr><th scope="col">Loket</th><th scope="col">Hari</th><th scope="col">Jam</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>1</td><td>Senin&ndash;Jumat</td><td>08.00&ndash;15.00</td></tr>
+          <tr><td>2</td><td>Senin&ndash;Jumat</td><td>08.00&ndash;12.00</td></tr>
+        </tbody>
+      </table>
+      <h3>Pertanyaan yang sering muncul</h3>
+      <ul>
+        <li>Apakah antrean bisa diambil daring?</li>
+        <li>Dokumen apa yang perlu dibawa?</li>
+      </ul>
+      <blockquote>"Layanan yang baik adalah layanan yang bisa diakses semua orang."</blockquote>
+      <p><a href="#konten">Tautan dalam konten</a> untuk melihat efek garis bawah dan cincin fokus.</p>
+    </article>
+
+    <div class="card">
+      <h2>Atribut yang sedang aktif</h2>
+      <p>
+        JS hanya menyalakan atribut <code>data-a11y-*</code> pada
+        <code>&lt;html&gt;</code>; CSS yang menggambar hasilnya. Membedakan dua
+        pihak itu penting saat mengintegrasikan widget ke situs yang punya
+        stylesheet sendiri.
+      </p>
+      <table id="attrTable">
+        <caption>Atribut data-a11y pada elemen html</caption>
+        <thead><tr><th scope="col">Atribut</th><th scope="col">Nilai</th></tr></thead>
+        <tbody><tr><td colspan="2">Belum ada.</td></tr></tbody>
+      </table>
+      <h3>Formulir contoh</h3>
+      <form id="demoForm">
+        <label for="nama">Nama lengkap</label>
+        <input id="nama" name="nama" type="text" autocomplete="name">
+        <label for="kab">Kabupaten</label>
+        <select id="kab" name="kab">
+          <option>Contoh Satu</option>
+          <option>Contoh Dua</option>
+        </select>
+        <button type="submit">Kirim</button>
+      </form>
+      <p class="footnote">Formulir ini tidak mengirim ke mana pun.</p>
+    </div>
+  </main>
+
+  <footer class="wrap">
+    <p class="footnote">&copy; 2026 Halaman demo untuk pengembangan paket. Bukan situs sungguhan.</p>
+  </footer>
+
+  <script src="/dist/a11y-widget.umd.js"></script>
+  <script>
+    (function () {
+        'use strict';
+
+        var output = document.getElementById('demoOutput');
+        var rows = document.querySelector('#attrTable tbody');
+
+        A11yWidget.init({
+            lang: 'id',
+            position: 'bottom-right',
+            contentSelectors: ['main'],
+            excludeSelectors: ['nav', 'footer', '.site-header'],
+            welcomeMessage: false
+        });
+
+        function show(line) {
+            output.textContent = line;
+        }
+
+        function renderAttributes() {
+            var html = document.documentElement;
+            var names = Array.prototype.filter.call(html.attributes, function (attr) {
+                return attr.name.indexOf('data-a11y-') === 0;
+            }).map(function (attr) { return attr.name; }).sort();
+
+            rows.textContent = '';
+            if (!names.length) {
+                var empty = rows.insertRow();
+                var cell = empty.insertCell();
+                cell.colSpan = 2;
+                cell.textContent = 'Belum ada.';
+                return;
+            }
+            names.forEach(function (name) {
+                var row = rows.insertRow();
+                row.insertCell().textContent = name;
+                row.insertCell().textContent = html.getAttribute(name);
+            });
+        }
+
+        document.addEventListener('click', function (event) {
+            var button = event.target.closest('[data-demo], [data-demo-action]');
+            if (!button) return;
+
+            if (button.dataset.demoAction === 'open') {
+                A11yWidget.open();
+                show('A11yWidget.open()');
+                return;
+            }
+            if (button.dataset.demoAction === 'reset') {
+                A11yWidget.reset();
+                show('A11yWidget.reset() - storage dihapus, atribut dilepas.');
+                return;
+            }
+            var payload = JSON.parse(button.dataset.demo);
+            A11yWidget.setState(payload);
+            show('setState(' + JSON.stringify(payload) + ')');
+        });
+
+        A11yWidget.on('stateChange', function () {
+            renderAttributes();
+        });
+
+        document.getElementById('demoForm').addEventListener('submit', function (event) {
+            event.preventDefault();
+            show('Dicegah: halaman demo tidak mengirim data.');
+        });
+
+        renderAttributes();
+    })();
+  </script>
+</body>
+</html>
