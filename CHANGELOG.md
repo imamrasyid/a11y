@@ -7,11 +7,29 @@ versi mengikuti [Semantic Versioning](https://semver.org/lang/id/).
 
 ### Ditambahkan
 
-- Harness pengujian: Vitest + jsdom (73 unit test untuk state, event bus,
-  adapter penyimpanan, paritas kunci i18n, modul DOM, template panel, dan
-  integrasi `A11yWidget` lewat API publik) serta Playwright + axe-core
-  (12 uji e2e terhadap `test/fixtures/playground.html`, termasuk pemindaian
-  kontras pada panel widget sendiri).
+- Seksi pembaca teks di panel menjadi kontrol pemutaran penuh, bukan lagi
+  sakelar tunggal: **Baca halaman / Jeda / Lanjut / Berhenti**, slider kecepatan
+  0,5–2,0 dengan readout (`1,0×`), `<select>` suara yang diisi dari
+  `getVoices()` + peristiwa `voiceschanged`, dan baris status
+  `role="status" aria-live="polite"` yang menyatakan apa yang terjadi
+  ("Sedang membacakan teks.", "Pembacaan dijeda.", "Selesai membacakan.",
+  "Pembacaan dihentikan.", "Tidak ada teks untuk dibacakan."). Seksinya tidak
+  dirender sama sekali kalau `speechSynthesis` tidak ada.
+- `options.tts.autoSpeak: 'none' | 'selection'` (default `'none'`): satu-satunya
+  perilaku legacy yang dibawa dari `a11y.js` lama. Hover-to-speak dan
+  tab-to-speak sengaja tidak diikuti.
+- 14 kunci i18n untuk kontrol pemutaran dan status di `id` + `en` (kini 67/67;
+  paritas kunci dijaga uji unit).
+- `test/unit/speechStub.js`: pengganti `speechSynthesis` yang dikendalikan
+  test — sebuah uji memutuskan kapan utterance mulai dan selesai, jadi tidak
+  ada timer atau tebakan waktu. Stub ini meniru `onend` yang dipicu Chromium
+  di dalam `cancel()`.
+- Harness pengujian: Vitest + jsdom (133 unit test untuk state, event bus,
+  adapter penyimpanan, paritas kunci i18n, modul DOM, template panel, izin TTS,
+  baca-saat-seleksi, dan integrasi `A11yWidget` lewat API publik) serta
+  Playwright + axe-core (19 uji e2e terhadap `test/fixtures/playground.html`,
+  termasuk pemindaian kontras pada panel widget sendiri dan pada seksi pembaca
+  yang sedang aktif).
 - `test/server.js`: server berkas statis tanpa dependensi untuk e2e.
 - Budget ukuran lewat `size-limit` (`dist/a11y-widget.umd.min.js` ≤ 20 kB,
   `dist/a11y-widget.css` ≤ 8 kB) + skrip `size`, `test`, `test:e2e`,
@@ -42,6 +60,29 @@ versi mengikuti [Semantic Versioning](https://semver.org/lang/id/).
 
 ### Diperbaiki
 
+- **Menghentikan pembaca malah melanjutkan ke blok berikutnya.** `cancel()`
+  mengosongkan antrean sesudah `synth.cancel()`, padahal browser masih memicu
+  `onend` untuk utterance yang baru dibuang; handler itu menaikkan
+  `chunkIndex` lalu memanggil `speakChunk()` sementara antreannya masih penuh.
+  Kini antrean dan callback dilepas sebelum `synth.cancel()`, jadi menekan
+  "Berhenti" benar-benar berhenti dan tidak lagi melaporkan "selesai
+  membacakan" yang palsu.
+- `getPageContent()` hanya membaca `innerText`, sehingga halaman tanpa properti
+  itu (jsdom, dokumen non-HTML) tidak menghasilkan teks sama sekali — dan
+  kontrol pembaca tidak punya apa pun untuk dimainkan. Kini jatuh ke
+  `textContent`.
+- Dua permintaan bicara berurutan bisa memicu dua probe izin sekaligus, dan
+  grant yang baru tidak tersimpan bila `sessionStorage` diblokir atau kuotanya
+  habis. Probe kini tunggal (satu in-flight, permintaan terbaru menang) dan
+  grant dipegang juga di memori.
+- Label opsi panel saat `:hover` (`#0d6efd` di atas `#f0f4ff`, 10,5px) hanya
+  4,3:1; token `--a11y-active-bg` dan latar hover tombol teks berada tepat di
+  angka 4,50:1 — lulus tanpa sisa. Keduanya turun ke `$a11y-primary-dark`
+  (5,8:1 dan 6,4:1).
+- Uji e2e yang mengklik FAB lalu memindai dengan axe mengukur panel saat animasi
+  `opacity` 0,22s masih berjalan, sehingga axe mencampur warna dengan halaman
+  dan melaporkan rasio yang tidak pernah dilihat siapa pun. Scan kini menunggu
+  panel mapan.
 - `npm run lint` gagal total: `.eslintrc.js` memakai `module.exports` di paket
   `"type": "module"` → `ReferenceError: module is not defined`.
   Diganti menjadi `.eslintrc.cjs`.
@@ -60,6 +101,11 @@ versi mengikuti [Semantic Versioning](https://semver.org/lang/id/).
 
 ### Diubah
 
+- `syncUI(state)` menjadi `syncUI(state, ttsView)`: panel butuh gambaran
+  pemutaran (sedang bicara, dijeda, daftar suara, status) yang bukan bagian
+  dari state yang dipersist. Kontrol transportasi sengaja **dinonaktifkan,
+  bukan disembunyikan**, supaya tinggi seksi tidak berubah setiap kali pembaca
+  mulai atau berhenti.
 - Pengumuman screen reader memakai label yang terlihat di panel, bukan kunci
   state mentah: `"Kontras: Terbalik"` menggantikan `"Kontras: reverse"`,
   `"Sembunyikan gambar: aktif"` menggantikan `"hideImages: aktif"`.

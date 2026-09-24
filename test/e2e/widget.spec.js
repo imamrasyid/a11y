@@ -3,6 +3,15 @@ import AxeBuilder from '@axe-core/playwright';
 
 const FIXTURE = '/test/fixtures/playground.html';
 
+// The panel fades in over 0.22s. Scanning while it is still translucent makes
+// axe blend the widget against the page and report colours nobody ever sees.
+async function waitForPanelSettle(page) {
+    await page.waitForFunction(function () {
+        const panel = document.getElementById('a11yPanel');
+        return !!panel && getComputedStyle(panel).opacity === '1';
+    });
+}
+
 test.beforeEach(async function ({ page }) {
     await page.goto(FIXTURE);
     await page.evaluate('window.a11yReady');
@@ -85,6 +94,7 @@ test.describe('accessibility of the widget itself', function () {
         test(`panel is clean in ${mode.name} contrast`, async function ({ page }) {
             await page.evaluate('A11yWidget.setState({ contrast: \'' + mode.contrast + '\' })');
             await page.click('#a11yFab');
+            await waitForPanelSettle(page);
             const results = await new AxeBuilder({ page })
                 .include('#a11yPanel')
                 .include('#a11yFab')

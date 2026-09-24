@@ -7,6 +7,7 @@ import { syncUI } from '../../src/ui/syncUI.js';
 import { mountSkipLink, unmountSkipLink } from '../../src/ui/skipLink.js';
 import { createDefaultState, mergeState } from '../../src/core/state.js';
 import en from '../../src/i18n/en.js';
+import { VOICES } from './speechStub.js';
 
 const allModules = new Proxy({}, { get: function () { return true; } });
 
@@ -39,6 +40,24 @@ describe('panelTemplate', function () {
         const labels = html.match(/id="a11y-label-[a-z]+"/g) || [];
         const groups = html.match(/aria-labelledby="a11y-label-[a-z]+"/g) || [];
         expect(labels.length).toBe(groups.length);
+    });
+
+    it('builds a reader section the transport, speed and voice can live in', function () {
+        const html = buildPanelHTML(en, {});
+        ['tts-play', 'tts-pause', 'tts-resume', 'tts-stop'].forEach(function (action) {
+            expect(html).toContain('data-a11y-action="' + action + '"');
+        });
+        expect(html).toContain('label class="a11y-tts__label" for="a11yTtsRate"');
+        expect(html).toContain('label class="a11y-tts__label" for="a11yTtsVoice"');
+        expect(html).toContain('type="range"');
+        expect(html).toContain('role="status"');
+    });
+
+    it('leaves the reader section out when there is no speech engine', function () {
+        const html = buildPanelHTML(en, {}, { ttsSupported: false });
+        expect(html).not.toContain('id="a11y-label-tts"');
+        expect(html).not.toContain('tts-play');
+        expect(html).toContain('id="a11y-label-contrast"');
     });
 });
 
@@ -130,6 +149,52 @@ describe('syncUI', function () {
 
     it('is a no-op while the panel is not mounted', function () {
         expect(function () { syncUI(createDefaultState()); }).not.toThrow();
+    });
+
+    it('disables every reader control while the reader is off', function () {
+        mountPanel({
+            container: document.body, position: 'bottom-right',
+            strings: en, modules: allModules, onAction: function () { },
+        });
+        syncUI(mergeState(createDefaultState(), { tts: { enabled: false } }));
+        const panel = document.getElementById('a11yPanel');
+        ['tts-play', 'tts-pause', 'tts-resume', 'tts-stop'].forEach(function (action) {
+            expect(panel.querySelector('[data-a11y-action="' + action + '"]').disabled).toBe(true);
+        });
+        expect(document.getElementById('a11yTtsRate').disabled).toBe(true);
+        expect(document.getElementById('a11yTtsVoice').disabled).toBe(true);
+        unmountPanel();
+    });
+
+    it('fills the voice list once the browser reports it', function () {
+        mountPanel({
+            container: document.body, position: 'bottom-right',
+            strings: en, modules: allModules, onAction: function () { },
+        });
+        const select = document.getElementById('a11yTtsVoice');
+        syncUI(createDefaultState(), { voices: VOICES, voiceDefault: 'Auto' });
+        expect(select.options.length).toBe(VOICES.length + 1);
+        expect(select.options[0].textContent).toBe('Auto');
+        expect(select.options[1].textContent).toBe('Bahasa Indonesia (id-ID)');
+        unmountPanel();
+    });
+
+    it('keeps the voice select pointed at the state instead of the last click', function () {
+        mountPanel({
+            container: document.body, position: 'bottom-right',
+            strings: en, modules: allModules, onAction: function () { },
+        });
+        const select = document.getElementById('a11yTtsVoice');
+        const view = { voices: VOICES, voiceDefault: 'Auto' };
+        syncUI(mergeState(createDefaultState(), { tts: { voice: VOICES[1] } }), view);
+        expect(select.value).toBe('1');
+        // A rebuild on every sync would drop the visitor's focus, so the list
+        // is only re-created when it actually changes size.
+        select.focus();
+        syncUI(createDefaultState(), view);
+        expect(select.options.length).toBe(VOICES.length + 1);
+        expect(select.value).toBe('');
+        unmountPanel();
     });
 });
 

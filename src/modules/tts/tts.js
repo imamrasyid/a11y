@@ -118,13 +118,21 @@ export function resume() {
 
 /**
  * Cancels all speech and clears the queue.
+ *
+ * The queue and the callbacks are dropped before synth.cancel() runs, because
+ * browsers fire `onend` for the utterance they are cancelling. Left in place,
+ * that handler would advance to the next block — so stopping the reader would
+ * both keep reading and report a spurious "finished" to onEnd subscribers.
  */
 export function cancel() {
     _paused = false;
     clearHighlight();
-    if (synth) { synth.cancel(); }
     chunks = [];
     chunkIndex = 0;
+    onStartCb = null;
+    onProgressCb = null;
+    onEndCb = null;
+    if (synth) { synth.cancel(); }
 }
 
 /**
@@ -188,7 +196,7 @@ export function getPageContent() {
     const nodes = container.querySelectorAll('h1,h2,h3,h4,h5,h6,p,li,td,blockquote');
     const result = [];
     nodes.forEach(function (node) {
-        const txt = (node.innerText || '').trim();
+        const txt = (readableText(node) || '').trim();
         if (txt && txt.length > 2) {
             result.push({ el: node, text: txt });
         }
@@ -197,6 +205,17 @@ export function getPageContent() {
 }
 
 // ─── Internal ────────────────────────────────────────────────────────────────
+
+/**
+ * innerText keeps hidden nodes out of the reading, which is what a visitor
+ * asked for by not displaying them — but it is an engine-specific property, so
+ * fall back to textContent wherever it is missing.
+ * @param {Element} node
+ * @returns {string}
+ */
+function readableText(node) {
+    return typeof node.innerText === 'string' ? node.innerText : node.textContent;
+}
 
 function speakChunk() {
     if (chunkIndex >= chunks.length) {

@@ -5,13 +5,22 @@
  */
 
 /**
+ * Playback bounds offered by the panel. The engine itself accepts 0.1–10, so a
+ * host that sets a rate outside this window still works — the slider just sits
+ * at the nearest end.
+ */
+export const TTS_RATE = Object.freeze({ min: 0.5, max: 2, step: 0.1 });
+
+/**
  * Builds the full panel inner HTML.
  * @param {object} s - i18n strings object from getStrings()
  * @param {object} modules - enabled modules map
+ * @param {object} [features] - capability flags, e.g. { ttsSupported: boolean }
  * @returns {string}
  */
-export function buildPanelHTML(s, modules) {
+export function buildPanelHTML(s, modules, features) {
   const m = modules || {};
+  const f = features || {};
 
   // Build sections array — only include enabled ones
   const sections = [];
@@ -35,7 +44,9 @@ export function buildPanelHTML(s, modules) {
   if (m.keyboard !== false || m.animations !== false || m.hideImages !== false) {
     sections.push(buildNavigationSection(s, m));
   }
-  if (m.tts !== false) {
+  // Without the Speech Synthesis API there is nothing to wire the controls to,
+  // so the section is left out rather than rendered dead.
+  if (m.tts !== false && f.ttsSupported !== false) {
     sections.push(buildTTSSection(s));
   }
 
@@ -165,6 +176,28 @@ function buildTTSSection(s) {
       <div class="a11y-section__label" id="a11y-label-tts">${esc(s.sectionTTS)}</div>
       <div class="a11y-section__list" role="group" aria-labelledby="a11y-label-tts">
         ${buildToggleRow('tts-main', null, s.ttsEnable, iconTTS())}
+        <div class="a11y-tts__transport">
+          ${buildTransportBtn('tts-play', s.ttsReadPage, iconPlay(), false)}
+          ${buildTransportBtn('tts-pause', s.ttsPause, iconPause(), true)}
+          ${buildTransportBtn('tts-resume', s.ttsResume, iconPlay(), true)}
+          ${buildTransportBtn('tts-stop', s.ttsStop, iconStop(), true)}
+        </div>
+        <div class="a11y-tts__field">
+          <label class="a11y-tts__label" for="a11yTtsRate">${esc(s.ttsRate)}</label>
+          <div class="a11y-tts__rate-row">
+            <input class="a11y-tts__range" type="range" id="a11yTtsRate"
+              min="${TTS_RATE.min}" max="${TTS_RATE.max}" step="${TTS_RATE.step}" value="1"
+              aria-describedby="a11yTtsRateValue">
+            <output class="a11y-tts__value" id="a11yTtsRateValue" for="a11yTtsRate">1.0×</output>
+          </div>
+        </div>
+        <div class="a11y-tts__field">
+          <label class="a11y-tts__label" for="a11yTtsVoice">${esc(s.ttsVoice)}</label>
+          <select class="a11y-tts__select" id="a11yTtsVoice">
+            <option value="">${esc(s.ttsVoiceDefault)}</option>
+          </select>
+        </div>
+        <p class="a11y-tts__status" id="a11yTtsStatus" role="status" aria-live="polite"></p>
       </div>
     </div>`;
 }
@@ -210,6 +243,15 @@ function buildToggleKey(key, label, iconHtml) {
     </button>`;
 }
 
+function buildTransportBtn(action, label, iconHtml, disabled) {
+  return `
+    <button class="a11y-opt a11y-tts__btn" type="button"
+      data-a11y-action="${esc(action)}"${disabled ? ' disabled' : ''}>
+      <span class="a11y-opt__icon" aria-hidden="true">${iconHtml}</span>
+      <span class="a11y-opt__label">${esc(label)}</span>
+    </button>`;
+}
+
 // ─── Inline SVG icons ────────────────────────────────────────────────────────
 
 function iconFont() {
@@ -247,6 +289,15 @@ function iconHideImages() {
 }
 function iconTTS() {
   return '<svg viewBox="0 0 24 24" class="a11y-icon"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>';
+}
+function iconPlay() {
+  return '<svg viewBox="0 0 24 24" class="a11y-icon"><path d="M8 5v14l11-7z"/></svg>';
+}
+function iconPause() {
+  return '<svg viewBox="0 0 24 24" class="a11y-icon"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>';
+}
+function iconStop() {
+  return '<svg viewBox="0 0 24 24" class="a11y-icon"><path d="M6 6h12v12H6z"/></svg>';
 }
 
 // ─── Utility ─────────────────────────────────────────────────────────────────

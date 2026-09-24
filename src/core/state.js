@@ -8,6 +8,9 @@
  * @property {boolean} enabled
  * @property {number}  rate
  * @property {SpeechSynthesisVoice|null} voice
+ * @property {'none'|'selection'} autoSpeak - 'selection' speaks whatever the
+ *                                           visitor selects; opt-in because it
+ *                                           competes with a screen reader
  */
 
 /**
@@ -52,6 +55,7 @@ export const DEFAULTS = Object.freeze({
         enabled: true,
         rate: 1.0,
         voice: null,
+        autoSpeak: 'none',
     }),
 });
 
@@ -69,6 +73,9 @@ const ENUM_VALUES = {
     align: ['default', 'left'],
     cursor: ['default', 'white', 'black'],
 };
+
+/** Valid values for the nested `tts.autoSpeak` setting. */
+const AUTO_SPEAK_MODES = ['none', 'selection'];
 
 /** @type {string[]} */
 const STATE_KEYS = Object.keys(DEFAULTS);
@@ -155,6 +162,7 @@ export function sanitizeState(parsed) {
     if (tts && typeof tts === 'object') {
         if (isValidValue('ttsEnabled', tts.enabled)) { clean.tts = Object.assign(clean.tts || {}, { enabled: tts.enabled }); }
         if (isValidValue('ttsRate', tts.rate)) { clean.tts = Object.assign(clean.tts || {}, { rate: tts.rate }); }
+        if (isValidValue('ttsAutoSpeak', tts.autoSpeak)) { clean.tts = Object.assign(clean.tts || {}, { autoSpeak: tts.autoSpeak }); }
     }
 
     return clean;
@@ -258,6 +266,7 @@ function isValidValue(key, value) {
         return typeof value === 'number' && isFinite(value);
     }
     if (key === 'ttsEnabled') { return typeof value === 'boolean'; }
+    if (key === 'ttsAutoSpeak') { return AUTO_SPEAK_MODES.includes(value); }
     if (ENUM_VALUES[key]) { return ENUM_VALUES[key].includes(value); }
     return typeof value === 'boolean';
 }

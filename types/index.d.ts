@@ -13,6 +13,11 @@ export interface TTSState {
   rate: number;
   /** Runtime only: never persisted, always `null` after a reload. */
   voice: SpeechSynthesisVoice | null;
+  /**
+   * `'selection'` speaks whatever the visitor selects. Off by default because a
+   * screen reader already announces selections.
+   */
+  autoSpeak: "none" | "selection";
 }
 
 export interface A11yState {
@@ -113,6 +118,20 @@ export interface A11yStrings {
   animations: string;
   hideImages: string;
   ttsEnable: string;
+  ttsReader: string;
+  ttsReadPage: string;
+  ttsPause: string;
+  ttsResume: string;
+  ttsStop: string;
+  ttsRate: string;
+  ttsVoice: string;
+  ttsVoiceDefault: string;
+  ttsSpeaking: string;
+  ttsPaused: string;
+  ttsEnded: string;
+  ttsStopped: string;
+  ttsNothingToRead: string;
+  ttsWelcome: string;
   ttsPermissionTitle: string;
   ttsPermissionBody: string;
   ttsPermissionAllow: string;

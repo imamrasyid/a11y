@@ -70,7 +70,9 @@
   &:hover {
     background-color: v.$a11y-bg-hover;
     border-color: v.$a11y-primary;
-    color: v.$a11y-primary;
+    // $a11y-primary on $a11y-bg-hover is 4.3:1 for the 10.5px label; the dark
+    // variant reaches 5.8:1.
+    color: v.$a11y-primary-dark;
   }
 
   &:focus-visible {
@@ -200,9 +202,11 @@
   outline: none;
 
   &:hover {
-    background-color: v.$a11y-primary;
-    border-color: v.$a11y-primary;
-    color: #fff;
+    // White on $a11y-primary measures exactly 4.50:1 — one rounding from
+    // failing. The FAB already darkens on hover; these buttons now match.
+    background-color: v.$a11y-primary-dark;
+    border-color: v.$a11y-primary-dark;
+    color: v.$a11y-active-text;
   }
 
   &:focus-visible {

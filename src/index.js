@@ -59,10 +59,11 @@ import {
     isSupported as ttsIsSupported, setRate as ttsSetRate,
     setVoice as ttsSetVoice, getPageContent,
 } from './modules/tts/tts.js';
-import { loadVoices, getVoices, selectVoice } from './modules/tts/ttsVoice.js';
+import { loadVoices, getVoices, selectVoice, getLangCode } from './modules/tts/ttsVoice.js';
+import { applyAutoSpeak, disableAutoSpeak } from './modules/tts/ttsAutoSpeak.js';
 import {
     requestPermissionAndSpeak,
-    grantPermission, revokePermission, removePrompt,
+    grantPermission, revokePermission, removePrompt, resetPermissionFlow,
 } from './modules/tts/ttsPermission.js';
 import {
     addReplacements, setReplacements,
@@ -103,6 +104,10 @@ let _lang = 'id';
  *  listeners registered through on()/off() are never touched. */
 let _internalSubs = [];
 
+/** Reader status line shown in the panel. Deliberately kept out of the
+ *  persisted state: it describes what is happening right now, not a setting. */
+let _ttsStatus = '';
+
 const TTS_WELCOME_KEY = 'a11y_tts_welcomed';
 
 function _subscribe(event, handler) {
@@ -113,6 +118,31 @@ function _subscribe(event, handler) {
 function _unsubscribeInternal() {
     _internalSubs.forEach(function (sub) { bus.off(sub.event, sub.handler); });
     _internalSubs = [];
+}
+
+/**
+ * Snapshot of everything the reader section shows that the state object
+ * doesn't hold: live playback status, the browser's voice list, status text.
+ * @returns {object}
+ */
+function _ttsView() {
+    return {
+        playing: ttsIsPlaying(),
+        paused: ttsIsPaused(),
+        voices: getVoices(),
+        voiceDefault: t('ttsVoiceDefault'),
+        status: _ttsStatus,
+    };
+}
+
+/**
+ * Writes the reader's status line, which is a live region — so this is also
+ * how a screen reader hears "started", "paused" or "stopped".
+ * @param {string} stringKey - i18n key, or '' to clear
+ */
+function _setTtsStatus(stringKey) {
+    _ttsStatus = stringKey ? t(stringKey) : '';
+    syncUI(_state, _ttsView());
 }
 
 // ─── Init ────────────────────────────────────────────────────────────────────
@@ -184,22 +214,34 @@ function init(options) {
         mountSkipLink(strings.skipLink);
     }
 
+    const ttsSupported = ttsIsSupported();
+
     mountPanel({
         container: _options.container || document.body,
         position: _options.position || 'bottom-right',
         strings,
         modules: _options.modules || {},
+        features: { ttsSupported },
         onAction: handlePanelAction,
     });
 
-    // Load TTS voices early so they're ready when needed
-    if ((_options.modules || {}).tts !== false && ttsIsSupported()) {
-        loadVoices();
+    // Load TTS voices early so they're ready when needed. Chromium hands them
+    // over asynchronously, so the panel is re-synced once the list arrives.
+    if (ttsSupported && (_options.modules || {}).tts !== false) {
+        loadVoices(function () { syncUI(_state, _ttsView()); });
     }
+
+    _subscribe('tts:start', function () { _setTtsStatus('ttsSpeaking'); });
+    _subscribe('tts:pause', function () { _setTtsStatus('ttsPaused'); });
+    _subscribe('tts:resume', function () { _setTtsStatus('ttsSpeaking'); });
+    _subscribe('tts:cancel', function () { _setTtsStatus('ttsStopped'); });
+    _subscribe('tts:end', function () { _setTtsStatus('ttsEnded'); });
+
+    document.addEventListener('visibilitychange', _onVisibilityChange);
 
     // Apply persisted state to DOM
     applyAllModules(_state);
-    syncUI(_state);
+    syncUI(_state, _ttsView());
 
     _initialized = true;
     bus.emit('init', getState());
@@ -221,6 +263,10 @@ function destroy() {
 
     ttsCancel();
     removePrompt();
+    resetPermissionFlow();
+    disableAutoSpeak();
+    document.removeEventListener('visibilitychange', _onVisibilityChange);
+    _ttsStatus = '';
 
     unmountPanel();
     unmountSkipLink();
@@ -300,7 +346,7 @@ function getState() {
 function setState(partial) {
     _state = mergeState(_state, partial);
     applyAllModules(_state);
-    syncUI(_state);
+    syncUI(_state, _ttsView());
     saveState(_state, _storage, _storageKey);
     bus.emit('stateChange', getState());
 }
@@ -314,8 +360,9 @@ function reset() {
     removePrompt();
 
     _state = createDefaultState(_options.defaults || {});
+    _ttsStatus = '';
     applyAllModules(_state);
-    syncUI(_state);
+    syncUI(_state, _ttsView());
     _storage.removeItem(_storageKey);
 
     announce(t('announceReset'));
@@ -330,7 +377,7 @@ function reset() {
 function resetModule(key) {
     _state = resetModuleState(_state, key);
     applyAllModules(_state);
-    syncUI(_state);
+    syncUI(_state, _ttsView());
     saveState(_state, _storage, _storageKey);
     bus.emit('stateChange', getState());
 }
@@ -364,9 +411,9 @@ const tts = {
     speak(text, options) {
         if (!_state.tts.enabled) { return; }
         const opts = Object.assign({ rate: _state.tts.rate, lang: _lang }, options);
-        const voice = opts.voice || selectVoice(_lang);
+        const voice = opts.voice || _state.tts.voice || selectVoice(_lang);
         _withPermission(function () {
-            ttsSpeak(text, Object.assign(opts, { voice }));
+            ttsSpeak(text, Object.assign(opts, { voice }, _ttsCallbacks()));
         });
     },
 
@@ -374,16 +421,13 @@ const tts = {
     speakPage() {
         if (!_state.tts.enabled) { return; }
         const content = getPageContent();
-        if (!content.length) { return; }
-        const voice = selectVoice(_lang);
+        if (!content.length) { _setTtsStatus('ttsNothingToRead'); return; }
+        const voice = _state.tts.voice || selectVoice(_lang);
         _withPermission(function () {
-            ttsSpeakChunks(content, {
-                rate: _state.tts.rate,
-                lang: _lang,
-                voice,
-                onStart() { bus.emit('tts:start'); },
-                onEnd() { bus.emit('tts:end'); },
-            });
+            ttsSpeakChunks(content, Object.assign(
+                { rate: _state.tts.rate, lang: _lang, voice },
+                _ttsCallbacks(),
+            ));
         });
     },
 
@@ -400,12 +444,15 @@ const tts = {
         ttsSetRate(rate);
         _state = mergeState(_state, { tts: { rate } });
         saveState(_state, _storage, _storageKey);
+        // Keeps the panel honest when the host drives the rate itself.
+        syncUI(_state, _ttsView());
     },
 
     setVoice(voice) {
         ttsSetVoice(voice);
         _state = mergeState(_state, { tts: { voice } });
         saveState(_state, _storage, _storageKey);
+        syncUI(_state, _ttsView());
     },
 
     grantPermission,
@@ -519,10 +566,49 @@ function handlePanelAction(action, data) {
             break;
         }
 
-        case 'tts-main':
-            setState({ tts: { enabled: !s.tts.enabled } });
-            if (!_state.tts.enabled) { ttsCancel(); }
+        case 'tts-main': {
+            const next = !s.tts.enabled;
+            setState({ tts: { enabled: next } });
+            if (!next) {
+                ttsCancel();
+                _ttsStatus = '';
+                syncUI(_state, _ttsView());
+            }
+            announce(t('ttsReader') + ': ' + t(next ? 'announceActive' : 'announceInactive'));
             break;
+        }
+
+        case 'tts-play':
+            tts.speakPage();
+            break;
+
+        case 'tts-pause':
+            tts.pause();
+            break;
+
+        case 'tts-resume':
+            tts.resume();
+            break;
+
+        case 'tts-stop':
+            tts.cancel();
+            break;
+
+        // No announce() here: dragging a slider would queue one message per
+        // step, and the range/select already speak their own value to a
+        // screen reader as it changes.
+        case 'tts-rate': {
+            const rate = parseFloat(data);
+            if (isFinite(rate)) { tts.setRate(rate); }
+            break;
+        }
+
+        case 'tts-voice': {
+            const idx = parseInt(data, 10);
+            const voices = getVoices();
+            tts.setVoice(isNaN(idx) ? null : (voices[idx] || null));
+            break;
+        }
 
         case 'reset':
             reset();
@@ -565,9 +651,39 @@ function applyAllModules(s) {
     if (mods.cursor !== false) { applyCursor(s.cursor); }
     if (mods.readingGuide !== false) { applyReadingGuide(s.readingGuide); }
     if (mods.keyboard !== false) { applyKeyboardNav(s.keyboard); }
+    applyAutoSpeak(
+        mods.tts !== false && s.tts.enabled && s.tts.autoSpeak === 'selection' ? 'selection' : 'none',
+        _speakSelection,
+    );
 }
 
 // ─── TTS helpers ─────────────────────────────────────────────────────────────
+
+/**
+ * Engine callbacks that mirror playback onto the event bus, so the panel's
+ * transport buttons and status line follow whatever is actually speaking —
+ * a page read, a selection read, or a host call through A11yWidget.tts.
+ * @returns {{onStart: function, onEnd: function}}
+ */
+function _ttsCallbacks() {
+    return {
+        onStart() { bus.emit('tts:start'); },
+        onEnd() { bus.emit('tts:end'); },
+    };
+}
+
+/**
+ * Reading out loud to an empty tab is pure noise for everyone nearby.
+ */
+function _onVisibilityChange() {
+    if (document.visibilityState !== 'hidden') { return; }
+    if (ttsIsPlaying() || ttsIsPaused()) { tts.cancel(); }
+}
+
+/** @param {string} text */
+function _speakSelection(text) {
+    tts.speak(text);
+}
 
 function _withPermission(speakFn) {
     const strings = getStrings();
@@ -592,10 +708,10 @@ function _scheduleWelcomeMessage() {
 
     function doSpeak() {
         if (!_state.tts.enabled) { return; }
-        const text = _options.welcomeText || t('ttsEnable');
-        const voice = selectVoice(_lang);
+        const text = _options.welcomeText || t('ttsWelcome');
+        const voice = _state.tts.voice || selectVoice(_lang);
         const utt = new SpeechSynthesisUtterance(text);
-        utt.lang = _lang === 'en' ? 'en-US' : 'id-ID';
+        utt.lang = getLangCode(_lang);
         utt.rate = _state.tts.rate || 1.0;
         if (voice) { utt.voice = voice; }
 

@@ -18,7 +18,7 @@ describe('createDefaultState', function () {
     it('applies overrides on top of the defaults', function () {
         const s = createDefaultState({ contrast: 'grayscale', tts: { rate: 1.5 } });
         expect(s.contrast).toBe('grayscale');
-        expect(s.tts).toEqual({ enabled: true, rate: 1.5, voice: null });
+        expect(s.tts).toEqual({ enabled: true, rate: 1.5, voice: null, autoSpeak: 'none' });
     });
 });
 
@@ -115,8 +115,18 @@ describe('sanitizeState', function () {
     });
 
     it('keeps only the recognised tts subkeys', function () {
-        const clean = sanitizeState({ tts: { enabled: false, rate: 1.4, voice: { name: 'x' }, bogus: 1 } });
-        expect(clean.tts).toEqual({ enabled: false, rate: 1.4 });
+        const clean = sanitizeState({
+            tts: {
+                enabled: false, rate: 1.4, autoSpeak: 'selection',
+                voice: { name: 'x' }, bogus: 1,
+            },
+        });
+        expect(clean.tts).toEqual({ enabled: false, rate: 1.4, autoSpeak: 'selection' });
+    });
+
+    it('drops an autoSpeak mode the reader does not implement', function () {
+        expect(sanitizeState({ tts: { autoSpeak: 'hover' } })).toEqual({});
+        expect(sanitizeState({ tts: { autoSpeak: true } })).toEqual({});
     });
 
     it('tolerates non-object payloads', function () {

@@ -27,7 +27,9 @@ $a11y-text: #1a1a2e !default;
 $a11y-text-muted: #5c666f !default;
 
 // ── Active state ──────────────────────────────────────────────────────────────
-$a11y-active-bg: $a11y-primary !default;
+// $a11y-primary with $a11y-active-text measures exactly 4.50:1 — one rounding
+// away from failing AA. The dark variant gives the same pairing 6.44:1.
+$a11y-active-bg: $a11y-primary-dark !default;
 $a11y-active-text: #ffffff !default;
 
 // ── Elevation ─────────────────────────────────────────────────────────────────

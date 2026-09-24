@@ -1,6 +1,7 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import A11yWidget from '../../src/index.js';
 import id from '../../src/i18n/id.js';
+import { spoken, lastUtterance, startUtterance, endUtterance } from './speechStub.js';
 
 const KEY = 'unit_widget';
 const html = () => document.documentElement;
@@ -9,6 +10,28 @@ function click(sel) {
     const el = document.querySelector(sel);
     if (!el) { throw new Error('no element for ' + sel); }
     el.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+}
+
+function statusText() {
+    const el = document.getElementById('a11yTtsStatus');
+    return el ? el.textContent : null;
+}
+
+/** @returns {Record<string, boolean>} which transport buttons are parked */
+function transportDisabled() {
+    const out = {};
+    ['tts-play', 'tts-pause', 'tts-resume', 'tts-stop'].forEach(function (action) {
+        out[action] = document.querySelector('[data-a11y-action="' + action + '"]').disabled;
+    });
+    return out;
+}
+
+function setVisibility(value) {
+    Object.defineProperty(document, 'visibilityState', {
+        configurable: true,
+        get: function () { return value; },
+    });
+    document.dispatchEvent(new Event('visibilitychange'));
 }
 
 beforeEach(function () {
@@ -260,6 +283,247 @@ describe('public state API', function () {
         A11yWidget.off('stateChange', handler);
         A11yWidget.setState({ font: 'readable' });
         A11yWidget.destroy();
+    });
+});
+
+describe('reader controls', function () {
+    beforeEach(function () {
+        // Skip the autoplay probe so each test can drive playback directly.
+        A11yWidget.tts.grantPermission();
+        A11yWidget.init({ storageKey: KEY });
+    });
+
+    afterEach(function () {
+        delete document.visibilityState;
+        A11yWidget.destroy();
+    });
+
+    it('gives every reader control a name a screen reader can announce', function () {
+        expect(document.querySelector('label[for="a11yTtsRate"]').textContent).toBe(id.ttsRate);
+        expect(document.querySelector('label[for="a11yTtsVoice"]').textContent).toBe(id.ttsVoice);
+        expect(document.getElementById('a11yTtsStatus').getAttribute('role')).toBe('status');
+        expect(document.getElementById('a11yTtsVoice').options[0].value).toBe('');
+    });
+
+    it('walks the transport through playing, paused and stopped', function () {
+        expect(transportDisabled()).toEqual({
+            'tts-play': false, 'tts-pause': true, 'tts-resume': true, 'tts-stop': true,
+        });
+
+        click('[data-a11y-action="tts-play"]');
+        expect(spoken).toHaveLength(1);
+        startUtterance(lastUtterance());
+        expect(statusText()).toBe(id.ttsSpeaking);
+        expect(transportDisabled()).toEqual({
+            'tts-play': false, 'tts-pause': false, 'tts-resume': true, 'tts-stop': false,
+        });
+
+        click('[data-a11y-action="tts-pause"]');
+        expect(statusText()).toBe(id.ttsPaused);
+        expect(transportDisabled()).toEqual({
+            'tts-play': false, 'tts-pause': true, 'tts-resume': false, 'tts-stop': false,
+        });
+
+        click('[data-a11y-action="tts-resume"]');
+        expect(statusText()).toBe(id.ttsSpeaking);
+
+        click('[data-a11y-action="tts-stop"]');
+        expect(statusText()).toBe(id.ttsStopped);
+        expect(A11yWidget.tts.isPlaying()).toBe(false);
+    });
+
+    it('says what it did when there is nothing on the page to read', function () {
+        document.querySelector('main').innerHTML = '';
+        click('[data-a11y-action="tts-play"]');
+        expect(spoken).toHaveLength(0);
+        expect(statusText()).toBe(id.ttsNothingToRead);
+    });
+
+    it('reads the page block by block, one utterance at a time', function () {
+        document.querySelector('main').innerHTML =
+            '<h1>Judul layanan</h1><p>Paragraf pertama halaman.</p><p>Paragraf kedua halaman.</p>';
+        click('[data-a11y-action="tts-play"]');
+
+        // Nothing is queued ahead: the next block is spoken only once the
+        // browser reports the current one finished.
+        for (let guard = 0; spoken.length < 3 && guard < 10; guard++) {
+            const utt = lastUtterance();
+            startUtterance(utt);
+            endUtterance(utt);
+        }
+        const finalBlock = lastUtterance();
+        startUtterance(finalBlock);
+        endUtterance(finalBlock);
+
+        expect(spoken.map(function (utt) { return utt.text; })).toEqual([
+            'Judul layanan', 'Paragraf pertama halaman.', 'Paragraf kedua halaman.',
+        ]);
+        expect(statusText()).toBe(id.ttsEnded);
+    });
+
+    it('reports the end of the page once the last chunk has been spoken', function () {
+        const events = [];
+        A11yWidget.on('tts:start', function () { events.push('start'); });
+        A11yWidget.on('tts:end', function () { events.push('end'); });
+        click('[data-a11y-action="tts-play"]');
+        startUtterance(lastUtterance());
+        endUtterance(lastUtterance());
+        expect(events).toEqual(['start', 'end']);
+        expect(statusText()).toBe(id.ttsEnded);
+    });
+
+    it('will not read on, or report finished, for speech it already cancelled', function () {
+        const events = [];
+        A11yWidget.on('tts:end', function () { events.push('end'); });
+        click('[data-a11y-action="tts-play"]');
+        const queued = spoken.length;
+        click('[data-a11y-action="tts-stop"]');
+
+        // Chromium fires onend for the utterance it discards, from inside
+        // cancel(). The engine must not read that as "this block is done".
+        expect(spoken).toHaveLength(queued);
+        expect(events).toEqual([]);
+    });
+
+    it('drives the engine from the speed slider and mirrors the number back', function () {
+        const range = document.getElementById('a11yTtsRate');
+        range.value = '1.4';
+        range.dispatchEvent(new Event('input', { bubbles: true }));
+        expect(A11yWidget.getState().tts.rate).toBe(1.4);
+        expect(document.getElementById('a11yTtsRateValue').textContent).toBe('1.4×');
+        expect(JSON.parse(localStorage.getItem(KEY)).tts.rate).toBe(1.4);
+    });
+
+    it('keeps the readout true to the setting when the host sets a rate outside the slider', function () {
+        A11yWidget.tts.setRate(5);
+        expect(document.getElementById('a11yTtsRate').value).toBe('2');
+        expect(document.getElementById('a11yTtsRateValue').textContent).toBe('5.0×');
+    });
+
+    it('applies a chosen voice for this page view without storing the object', function () {
+        const select = document.getElementById('a11yTtsVoice');
+        expect(select.options[1].textContent).toBe('Bahasa Indonesia (id-ID)');
+        select.value = '1';
+        select.dispatchEvent(new Event('change', { bubbles: true }));
+        expect(A11yWidget.getState().tts.voice.name).toBe('Google_us');
+        expect(JSON.parse(localStorage.getItem(KEY)).tts.voice).toBeNull();
+
+        A11yWidget.destroy();
+        A11yWidget.tts.grantPermission();
+        A11yWidget.init({ storageKey: KEY });
+        expect(A11yWidget.getState().tts.voice).toBeNull();
+        expect(document.getElementById('a11yTtsVoice').value).toBe('');
+    });
+
+    it('switching the reader off silences it, clears the status and parks the controls', function () {
+        click('[data-a11y-action="tts-play"]');
+        startUtterance(lastUtterance());
+        click('[data-a11y-action="tts-main"]');
+        expect(A11yWidget.getState().tts.enabled).toBe(false);
+        expect(A11yWidget.tts.isPlaying()).toBe(false);
+        expect(statusText()).toBe('');
+        expect(transportDisabled()).toEqual({
+            'tts-play': true, 'tts-pause': true, 'tts-resume': true, 'tts-stop': true,
+        });
+        expect(document.getElementById('a11yTtsRate').disabled).toBe(true);
+        expect(document.getElementById('a11yTtsVoice').disabled).toBe(true);
+    });
+
+    it('refuses to read the page while the reader is off', function () {
+        A11yWidget.setState({ tts: { enabled: false } });
+        A11yWidget.tts.speakPage();
+        expect(spoken).toHaveLength(0);
+    });
+
+    it('stops the reader when the tab goes hidden', function () {
+        click('[data-a11y-action="tts-play"]');
+        startUtterance(lastUtterance());
+        setVisibility('hidden');
+        expect(A11yWidget.tts.isPlaying()).toBe(false);
+        expect(statusText()).toBe(id.ttsStopped);
+    });
+
+    it('takes its visibilitychange listener back on destroy', function () {
+        const spy = vi.spyOn(document, 'removeEventListener');
+        A11yWidget.destroy();
+        expect(spy.mock.calls.some(function (call) { return call[0] === 'visibilitychange'; })).toBe(true);
+        spy.mockRestore();
+    });
+});
+
+describe('read what I select', function () {
+    beforeEach(function () {
+        A11yWidget.tts.grantPermission();
+        if (window.getSelection) { window.getSelection().removeAllRanges(); }
+    });
+
+    afterEach(function () {
+        if (window.getSelection) { window.getSelection().removeAllRanges(); }
+        A11yWidget.destroy();
+    });
+
+    function selectText(el, text) {
+        el.textContent = text;
+        const range = document.createRange();
+        range.selectNodeContents(el);
+        const sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+    }
+
+    async function releaseMouse() {
+        document.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+        await new Promise(function (r) { setTimeout(r, 80); });
+    }
+
+    it('stays out of the way until the host opts in', async function () {
+        A11yWidget.init({ storageKey: KEY });
+        selectText(document.querySelector('p'), 'paragraf yang diseleksi pembaca');
+        await releaseMouse();
+        expect(spoken).toHaveLength(0);
+    });
+
+    it('reads a selection from the host page once opted in', async function () {
+        A11yWidget.init({ storageKey: KEY, defaults: { tts: { autoSpeak: 'selection' } } });
+        selectText(document.querySelector('p'), 'paragraf yang diseleksi pembaca');
+        await releaseMouse();
+        expect(spoken).toHaveLength(1);
+        expect(spoken[0].text).toBe('paragraf yang diseleksi pembaca');
+    });
+
+    it('leaves a selection inside the panel alone', async function () {
+        A11yWidget.init({ storageKey: KEY, defaults: { tts: { autoSpeak: 'selection' } } });
+        selectText(document.getElementById('a11yTtsRateValue'), '1.0× teks panel');
+        await releaseMouse();
+        expect(spoken).toHaveLength(0);
+    });
+
+    it('ignores a selection too short to be deliberate', async function () {
+        A11yWidget.init({ storageKey: KEY, defaults: { tts: { autoSpeak: 'selection' } } });
+        selectText(document.querySelector('p'), 'ab');
+        await releaseMouse();
+        expect(spoken).toHaveLength(0);
+    });
+
+    it('unbinds when the reader is switched off and again on', async function () {
+        A11yWidget.init({ storageKey: KEY, defaults: { tts: { autoSpeak: 'selection' } } });
+        A11yWidget.setState({ tts: { enabled: false } });
+        selectText(document.querySelector('p'), 'paragraf yang diseleksi pembaca');
+        await releaseMouse();
+        expect(spoken).toHaveLength(0);
+
+        A11yWidget.setState({ tts: { enabled: true } });
+        selectText(document.querySelector('p'), 'paragraf lain yang diseleksi');
+        await releaseMouse();
+        expect(spoken).toHaveLength(1);
+    });
+
+    it('releases the document listeners on destroy', async function () {
+        A11yWidget.init({ storageKey: KEY, defaults: { tts: { autoSpeak: 'selection' } } });
+        A11yWidget.destroy();
+        selectText(document.querySelector('p'), 'paragraf yang diseleksi pembaca');
+        await releaseMouse();
+        expect(spoken).toHaveLength(0);
     });
 });
 

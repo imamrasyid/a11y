@@ -25,6 +25,7 @@ let escapeKeyHandler = null;
  * @param {string}  options.position - 'bottom-right'|'bottom-left'|'top-right'|'top-left'
  * @param {object}  options.strings
  * @param {object}  options.modules
+ * @param {object}  [options.features]   Capability flags for the template
  * @param {function} options.onAction - (actionType: string, data: any) => void
  */
 export function mountPanel(options) {
@@ -55,7 +56,7 @@ export function mountPanel(options) {
     panelEl.setAttribute('aria-modal', 'false');
     panelEl.setAttribute('aria-label', strings.panelTitle || 'Accessibility');
     panelEl.setAttribute('aria-hidden', 'true');
-    panelEl.innerHTML = buildPanelHTML(strings, options.modules);
+    panelEl.innerHTML = buildPanelHTML(strings, options.modules, options.features);
     container.appendChild(panelEl);
 
     bindPanelEvents(options.onAction);
@@ -178,6 +179,25 @@ function bindPanelEvents(onAction) {
     panelEl.addEventListener('click', function (e) {
         if (e.target.closest('[data-a11y-action="tts-main"]')) { cb('tts-main', null); }
     });
+
+    // TTS transport buttons
+    ['tts-play', 'tts-pause', 'tts-resume', 'tts-stop'].forEach(function (action) {
+        panelEl.addEventListener('click', function (e) {
+            if (e.target.closest('[data-a11y-action="' + action + '"]')) {
+                cb(action, null);
+            }
+        });
+    });
+
+    // TTS rate + voice — form controls fire input/change, never click
+    const rateInput = panelEl.querySelector('#a11yTtsRate');
+    if (rateInput) {
+        rateInput.addEventListener('input', function () { cb('tts-rate', rateInput.value); });
+    }
+    const voiceSelect = panelEl.querySelector('#a11yTtsVoice');
+    if (voiceSelect) {
+        voiceSelect.addEventListener('change', function () { cb('tts-voice', voiceSelect.value); });
+    }
 
     // Escape key
     escapeKeyHandler = function (e) {
