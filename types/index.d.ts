@@ -158,8 +158,8 @@ export type LocaleCode = "id" | "en";
 
 /**
  * A locale code, or a partial string pack merged over `baseLang`.
- * A code with no pack (e.g. `'jv'`, which still selects a Javanese voice)
- * falls back to `baseLang`.
+ * A code with no pack in this build (e.g. `'jv'`, until the host registers one
+ * with `registerLocale()`) still selects its voice; the panel falls back.
  */
 export type LangOption = LocaleCode | "jv" | (string & {}) | Partial<A11yStrings>;
 
@@ -324,7 +324,22 @@ export interface A11yWidgetAPI {
   tts: TTSA11yAPI;
 
   // i18n
-  getAvailableLocales(): LocaleCode[];
+  /** Every code `lang` can resolve right now: the bundled packs plus any
+   *  registered with registerLocale(). */
+  getAvailableLocales(): string[];
+  /** Adds a locale pack after the bundle was built, so a language the package
+   *  does not ship can be used by code — and stays out of everyone else's
+   *  download. Call before init(). Keys left as '' keep the base locale's
+   *  text, so a partially reviewed pack is safe to register.
+   *  @param code    Locale code later passed as `lang`, e.g. 'jv'
+   *  @param strings Full or partial pack, as exported by `@a11y-widget/core/locales/<code>`
+   *  @param rules   How the reader pronounces this language; replaces the
+   *                 built-in rules when the code shadows a bundled locale */
+  registerLocale(
+    code: string,
+    strings: Partial<A11yStrings>,
+    rules?: ReplacementRule[],
+  ): void;
 
   // Constants
   DEFAULTS: Readonly<A11yState>;

@@ -23,7 +23,7 @@ import {
 import { mountAnnouncer, announce, unmountAnnouncer } from './core/announcer.js';
 
 // i18n
-import { initI18n, getStrings, t, getAvailableLocales } from './i18n/index.js';
+import { initI18n, getStrings, t, getAvailableLocales, registerLocale } from './i18n/index.js';
 
 // Modules
 import { applyContrast, resetContrast } from './modules/contrast.js';
@@ -189,8 +189,9 @@ function init(options) {
 
     // ── Language ───────────────────────────────────────────────────────────────
     // Speech and panel text resolve separately: a code with no locale pack
-    // ('jv') still selects a Javanese voice, while the UI falls back to a
-    // language it can actually render — and initI18n says so on the console.
+    // ('jv', unless the host registered one) still selects a Javanese voice,
+    // while the UI falls back to a language it can actually render — and
+    // initI18n says so on the console.
     const uiLang = initI18n(
         _options.lang || 'id',
         _options.baseLang || _options.fallbackLang,
@@ -783,6 +784,7 @@ const A11yWidget = {
 
     // i18n utilities
     getAvailableLocales,
+    registerLocale,
 
     // Constants
     DEFAULTS,

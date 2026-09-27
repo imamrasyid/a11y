@@ -74,12 +74,23 @@ contrast modes and in the dark colour scheme.
 - Keys must match the `id` pack exactly; the i18n cases in
   `test/unit/core.test.js` fail on a missing or extra key, so add the strings to
   every pack in one change.
+- Only `id` and `en` are imported by `src/i18n/index.js`, and that import is what
+  puts a language into the bundle. A new pack is therefore a file a host pulls in
+  itself and hands to `registerLocale()` — adding a language must never make the
+  widget heavier for the sites that did not ask for it.
+- A key left as `''` means "not translated yet", and the resolver keeps the base
+  locale's wording for it. That is what lets an unfinished pack be useful: fill
+  what a reviewer has signed off on, leave the rest empty, and the panel degrades
+  one key at a time instead of going blank.
 - Speech normalisation belongs to the locale: `speechRules` in the pack holds the
   abbreviations and symbols that language reads differently (`Rp.`, `Kab.`, `&`).
   `UNIVERSAL_REPLACEMENTS` is for symbols that behave the same everywhere.
-- A locale can ship voice selection without panel strings (the `jv` case): pass it
-  through `lang`, let `baseLang`/`fallbackLang` supply the text, and leave a
-  `console.warn` explaining the fallback.
+- A locale can ship voice selection without panel strings: pass its code through
+  `lang`, let `baseLang`/`fallbackLang` supply the text, and leave a
+  `console.warn` explaining the fallback. `src/i18n/jv.js` is both this case and
+  the review worksheet for it — every value empty, every key annotated with the
+  Indonesian it has to match. Reviewers delete that annotation as they confirm a
+  key, so a key still carrying it is a key nobody has signed off on.
 - Do not commit machine translations of a language you do not speak. A translation
   needs a native reviewer; an unreviewed pack is worse than a fallback, because it
   looks finished.

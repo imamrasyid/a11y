@@ -125,14 +125,15 @@ A11yWidget.init({
   // FAB and panel position: 'bottom-right' | 'bottom-left' | 'top-right' | 'top-left'
   position: "bottom-right",
 
-  // Locale: 'id' | 'en' | custom strings object
+  // Locale: 'id' | 'en' | a code you registered | custom strings object
   lang: "id",
 
   // Base locale for partial string overrides
   baseLang: "id",
 
   // Locale whose strings are used when `lang` has no string pack of its own.
-  // `lang: 'jv'` still selects a Javanese voice; the panel then speaks `baseLang`.
+  // `lang: 'jv'` without a registered pack still selects a Javanese voice; the
+  // panel then speaks `baseLang`.
   fallbackLang: "id",
 
   // Which containers "read page" may read, most specific first. The first list
@@ -329,12 +330,34 @@ A11yWidget.init({
 
 `id` and `en` ship complete packs (67 keys each — parity is a unit test), and
 every pack carries its own `speechRules`, so `Rp.` or `DPRD` is only ever spoken
-where it belongs. A locale code without a pack is still accepted: `lang: 'jv'`
-selects a Javanese voice while the panel falls back to `baseLang`, with a
-`console.warn` telling you why.
+where it belongs.
+
+### Adding a language
+
+Only `id` and `en` are imported by the bundle, so a second language never makes
+the widget heavier for the sites that do not use it. `@a11y-widget/core/locales/<code>`
+exports the packs this repo carries but does not ship — Javanese today — and
+`registerLocale()` makes one reachable by name:
 
 ```js
-A11yWidget.getAvailableLocales(); // → ['id', 'en']
+import jv, { speechRules } from "@a11y-widget/core/locales/jv";
+
+A11yWidget.registerLocale("jv", jv, speechRules); // before init()
+A11yWidget.init({ lang: "jv" });
+```
+
+A key whose value is `""` has not been translated yet, and keeps the base
+locale's wording — so registering a half-reviewed pack gives a visitor a
+half-reviewed panel rather than a blank one. Registering under a code that is
+already bundled corrects it: `registerLocale("en", { panelReset: "Clear" })`
+changes that one label and leaves the rest of the English pack alone.
+
+A locale code with no pack anywhere is still accepted: `lang: 'jv'` with nothing
+registered selects a Javanese voice while the panel falls back to `baseLang`,
+with a `console.warn` telling you why.
+
+```js
+A11yWidget.getAvailableLocales(); // → ['id', 'en'] (+ anything registered)
 A11yWidget.DEFAULTS;              // the state a first-time visitor starts from
 ```
 
@@ -358,8 +381,8 @@ A11yWidget.init({
 ```
 
 Internal modules are not exported paths: import `@a11y-widget/core`, the
-`/css` subpath, and `/scss`. Deep imports into `src/` are free to change between
-minor versions.
+`/css` and `/scss` subpaths, and `/locales/<code>` for an opt-in language pack.
+Anything deeper into `src/` is free to change between minor versions.
 
 ---
 
@@ -506,9 +529,14 @@ npm run build
 | `a11y-widget.css`        | CSS          | All environments              |
 
 Size is checked in CI against a budget (`npm run size`, brotli): the UMD build
-and the stylesheet are held under 13 kB and 4 kB respectively, with only a few
-percent of headroom over what ships today. Zero runtime dependencies — anything
+and the stylesheet are held under 13 kB and 4 kB respectively, and what ships
+today sits just inside both — deliberately, so a change that grows the bundle
+becomes a decision rather than a surprise. Zero runtime dependencies — anything
 under `devDependencies` stays out of the bundle.
+
+Language packs are the exception to that table: `/locales/<code>` serves the
+source file under `src/i18n/`, and no build includes it unless the site imports
+it.
 
 ---
 

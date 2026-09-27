@@ -16,6 +16,19 @@ versi mengikuti [Semantic Versioning](https://semver.org/lang/id/).
   string pack. `lang: 'jv'` tetap memilih suara Jawa.
 - Tiap locale pack punya `speechRules` sendiri (`src/i18n/id.js`, `en.js`),
   dibaca lewat `getSpeechRules(lang)`.
+- `A11yWidget.registerLocale(code, strings, rules)` dan subpath ekspor
+  `@a11y-widget/core/locales/<code>`. Bahasa baru tidak lagi menambah ukuran
+  bundel: hanya `id` dan `en` yang di-import `src/i18n/index.js`, sisanya file
+  yang diunduh host sendiri. Mendaftarkan kode yang sudah built-in mengkoreksi
+  string yang dikirim tanpa menunggu rilis. Yang menaikkan bundel 0,14 kB di
+  sini adalah mekanisme pendaftarannya, bukan bahasanya.
+- Kunci bernilai `''` berarti "belum diterjemahkan" dan mewarisi teks locale
+  dasar. Sebelumnya string kosong ditimpa apa adanya ke atas pack basis, sehingga
+  pack separuh jadi menghasilkan panel berisi tombol tanpa label.
+- `src/i18n/jv.js`: kerangka Basa Jawa — 67 kunci dengan rujukan Indonesia di
+  tiap barisnya, `speechRules` kosong. **Isinya masih kosong karena belum ada
+  penutur asli yang meninjau**; aman didaftarkan hari ini justru karena kunci
+  kosong jatuh ke bahasa Indonesia.
 - Seksi pembaca teks di panel menjadi kontrol pemutaran penuh, bukan lagi
   sakelar tunggal: **Baca halaman / Jeda / Lanjut / Berhenti**, slider kecepatan
   0,5–2,0 dengan readout (`1,0×`), `<select>` suara yang diisi dari
@@ -42,12 +55,13 @@ versi mengikuti [Semantic Versioning](https://semver.org/lang/id/).
   yang sedang aktif).
 - `test/server.js`: server berkas statis tanpa dependensi untuk e2e.
 - Budget ukuran lewat `size-limit` (`dist/a11y-widget.umd.min.js` ≤ 13 kB,
-  `dist/a11y-widget.css` ≤ 4 kB; hasil saat ini 12,66 kB dan 3,52 kB brotli, jadi
-  anggarannya cuma menyisakan ruang naik beberapa persen — itulah gunanya) +
+  `dist/a11y-widget.css` ≤ 4 kB; hasil saat ini 12,8 kB dan 3,52 kB brotli, jadi
+  anggarannya sengaja sempit — naikkan batas hanya kalau kamu memang mau
+  membicarakannya) +
   skrip `size`, `test`, `test:e2e`, `test:coverage`, `prepack` (build sebelum
   packing) dan `pack:check` (`npm pack --dry-run`).
 - `types/index.d.ts` sekarang menjangkau seluruh API publik (`A11yStrings`
-  dengan 53 kunci, `LangOption`, `StateKey`, `PageChunk`, `SetStatePayload`,
+  dengan 67 kunci, `LangOption`, `StateKey`, `PageChunk`, `SetStatePayload`,
   opsi `init`).
 - Pemeriksaan tipe di sisi konsumen: `typescript` (dev-only) + `tsconfig.json` +
   `test/types/consumer.ts` yang mengimpor paket lewat nama itself
@@ -254,7 +268,8 @@ versi mengikuti [Semantic Versioning](https://semver.org/lang/id/).
   jalur dalam `src/` memang tidak ada di peta `exports`, jadi contoh itu tidak
   akan pernah selesai di-resolve. Adapter storage cukup objek dengan tiga
   metode — `sessionStorage` sendiri sudah sah — dan hanya `.` / `./css` /
-  `./scss` / `./dist/*` yang dijamin.
+  `./scss` / `./dist/*` yang dijamin. (`./locales/*` menyusul belakangan; lihat
+  entri `registerLocale` di atas.)
 - Catatan "Dark mode" di README diperjelas: yang ikut skema sistem adalah kaca
   panel itu sendiri, bukan halaman situs; mode kontras dari panel adalah hal lain.
   Tabel atribut kini punya kolom "siapa yang bertindak" dan memuat
@@ -262,6 +277,12 @@ versi mengikuti [Semantic Versioning](https://semver.org/lang/id/).
 - Dua batasan ditulis apa adanya di README: teks yang situs kunci ke piksel
   absolut tidak ikut membesar, dan sebuah widget aksesibilitas bukan klaim
   conform — halaman aslinya tetap harus lolos WCAG sendiri.
+- `.eslintrc.cjs` sekarang `extends: 'eslint:recommended'`. Sebelum ini gerbang
+  lint cuma empat aturan, dan `no-dupe-keys` termasuk yang tidak berjalan: kunci
+  ganda di objek `A11yWidget` lolos tanpa suara. Dua temuan lain dari aturan yang
+  kini aktif adalah celah konfigurasi, bukan bugs — `Highlight` (API yang lebih
+  baru dari daftar global ESLint ini, dan cabangnya dijaga `CSS.highlights`) dan
+  `process` di `test/server.js` (lingkungan Node untuk `test/**`).
 
 ### Dihapus
 

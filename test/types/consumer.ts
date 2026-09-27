@@ -126,3 +126,19 @@ const api: A11yWidgetAPI = A11yWidget;
 const chunks: PageChunk[] = [];
 void chunks;
 void api.getAvailableLocales();
+
+// ─── opt-in locale packs ─────────────────────────────────────────────────────
+// A registered code is just a string, and a pack may be half-translated.
+A11yWidget.registerLocale("jv", { panelTitle: "Aksesibilitas" }, [
+  { search: /&/g, replace: "lan" },
+]);
+A11yWidget.registerLocale("su", { panelTitle: "Aksesibiliteit" });
+const locales: string[] = A11yWidget.getAvailableLocales();
+void locales;
+
+// The /locales/* subpath is typed by types/locale-pack.d.ts, so a host gets the
+// pack as Partial<A11yStrings> and its rules as ReplacementRule[].
+import jvPack, { speechRules as jvSpeechRules } from "@a11y-widget/core/locales/jv";
+A11yWidget.registerLocale("jv", jvPack, jvSpeechRules);
+// @ts-expect-error panelTitel is not a key of A11yStrings
+A11yWidget.registerLocale("jv", { panelTitel: "Aksesibilitas" });

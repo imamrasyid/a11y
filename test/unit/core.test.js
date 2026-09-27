@@ -4,6 +4,7 @@ import { createNoopAdapter, isValidAdapter } from '../../src/core/storage.js';
 import { initI18n, getStrings, getSpeechRules, t, getAvailableLocales } from '../../src/i18n/index.js';
 import id from '../../src/i18n/id.js';
 import en from '../../src/i18n/en.js';
+import jv from '../../src/i18n/jv.js';
 
 describe('eventBus', function () {
     it('delivers payloads and supports off()', function () {
@@ -50,8 +51,10 @@ describe('storage adapters', function () {
 });
 
 describe('i18n', function () {
-    it('keeps the id and en key sets identical', function () {
-        expect(Object.keys(en).sort()).toEqual(Object.keys(id).sort());
+    it('keeps every locale pack key-for-key with the others', function () {
+        const keys = Object.keys(id).sort();
+        expect(Object.keys(en).sort()).toEqual(keys);
+        expect(Object.keys(jv).sort()).toEqual(keys);
     });
 
     it('exposes the built-in locales', function () {
@@ -64,12 +67,20 @@ describe('i18n', function () {
         expect(getStrings().panelReset).toBe(en.panelReset);
     });
 
+    it('treats a key nobody translated as the base text, not as a blank', function () {
+        // The whole safety of a half-reviewed pack rests on this: '' has to mean
+        // "not translated yet", or a visitor gets an unlabeled button.
+        initI18n({ panelTitle: '', panelReset: 'Zurücksetzen' }, 'en');
+        expect(getStrings().panelTitle).toBe(en.panelTitle);
+        expect(getStrings().panelReset).toBe('Zurücksetzen');
+    });
+
     it('resolves a known locale code', function () {
         initI18n('en', 'id');
         expect(getStrings()).toBe(en);
     });
 
-    it('says so when a code has no string pack, instead of going quiet', function () {
+    it('says so when a pack was not registered, instead of going quiet', function () {
         const warn = vi.spyOn(console, 'warn').mockImplementation(function () { });
         const used = initI18n('jv', 'id');
         expect(used).toBe('id');

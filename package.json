@@ -20,6 +20,10 @@
     },
     "./css": "./dist/a11y-widget.css",
     "./dist/*": "./dist/*",
+    "./locales/*": {
+      "types": "./types/locale-pack.d.ts",
+      "default": "./src/i18n/*.js"
+    },
     "./scss": "./src/styles/index.scss",
     "./src/styles/index.scss": "./src/styles/index.scss",
     "./package.json": "./package.json"
