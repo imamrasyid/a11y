@@ -2,7 +2,7 @@
   "name": "@a11y-widget/core",
   "version": "1.0.0",
   "description": "Modular, framework-agnostic accessibility widget — WCAG 2.1 AA",
-  "author": "TODO: isi nama/URL penulis sebelum publish — npm menyimpan nilai ini apa adanya",
+  "author": "imamrasyid",
   "license": "MIT",
   "type": "module",
   "main": "dist/a11y-widget.cjs.js",
@@ -98,7 +98,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "TODO: isi URL repo publik sebelum publish (scope npm 'a11y-widget' belum diklaim)"
+    "url": "git+https://github.com/imamrasyid/a11y.git"
   },
   "publishConfig": {
     "access": "public"

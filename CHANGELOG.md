@@ -5,6 +5,20 @@ versi mengikuti [Semantic Versioning](https://semver.org/lang/id/).
 
 ## [Unreleased]
 
+- Isi `src/i18n/jv.js`: 67 kunci Basa Jawa dan `speechRules`-nya masih kosong
+  sampai ada penutur asli yang meninjau. Pelayanannya sudah lengkap — pack kosong
+  bisa didaftarkan sekarang dan teksnya jatuh ke bahasa Indonesia.
+
+## [1.0.0] - 2026-09-27
+
+Versi pertama yang didokumentasikan sebagai satu kesatuan rilis dan diberi tag
+(`v1.0.0`). `npm publish` masih menunggu npm org `a11y-widget` dibuat — lihat
+catatan di akhir berkas ini.
+
+Ekstraksi pertama widget aksesibilitas dari berkas tunggal portal pemerintah
+(legacy `a11y.js` / `a11y.css`) menjadi paket modular `src/` → `dist/` dengan
+format ESM/CJS/UMD, stylesheet SCSS, locale `id`/`en`, dan 14 modul fitur.
+
 ### Ditambahkan
 
 - Opsi `contentSelectors` dan `excludeSelectors` untuk "Baca halaman": daftar
@@ -312,12 +326,6 @@ versi mengikuti [Semantic Versioning](https://semver.org/lang/id/).
     ke piksel karyanya sendiri — diganti pengali ukuran dasar halaman pada rilis
     ini.
 
-## [1.0.0]
-
-Ekstraksi pertama widget aksesibilitas dari berkas tunggal portal pemerintah
-(legacy `a11y.js` / `a11y.css`) menjadi paket modular `src/` → `dist/` dengan
-format ESM/CJS/UMD, stylesheet SCSS, locale `id`/`en`, dan 14 modul fitur.
-
 ---
 
 ## Sebelum paket ini bisa dipublish
@@ -325,7 +333,10 @@ format ESM/CJS/UMD, stylesheet SCSS, locale `id`/`en`, dan 14 modul fitur.
 - Buat npm org `a11y-widget` (scope `@a11y-widget/core` saat ini 404 dan tidak
   bisa diklaim tanpa org). Cadangan unscoped yang masih bebas: `wcag-widget`,
   `a11ykit`. Nama `a11y-widget` dan `a11y` sudah dipakai pihak lain.
-- Ganti placeholder `TODO` pada `author` dan `repository.url` di `package.json`.
-- Tentukan pemegang hak cipta pada `LICENSE` (kini tertulis "the a11y-widget
-  contributors").
+- Namai kanal pelaporan keamanan di `SECURITY.md` yang benar-benar kamu pantau;
+  isinya masih `TODO`, dan alamat email karangan lebih buruk dari tidak ada.
 - Hapus catatan "belum dipublish" di README, atau pindahkan ke badge yang benar.
+
+Sudah beres pada 1.0.0: `author` (`imamrasyid`) dan `repository.url` di
+`package.json` terisi, dan pemegang hak cipta `LICENSE` diputuskan tetap
+"the a11y-widget contributors".

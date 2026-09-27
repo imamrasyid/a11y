@@ -128,7 +128,9 @@ contrast modes and in the dark colour scheme.
 
 ## Before this package can be published
 
-Tracked at the bottom of `CHANGELOG.md`. Short version: the npm org has to be
-created, `author` and `repository.url` in `package.json` are deliberate `TODO`
-placeholders, and the README's install/CDN lines stay marked "belum dipublish"
-until a real registry entry exists. Do not fill those in with invented values.
+Tracked at the bottom of `CHANGELOG.md`. What is left: the npm org has to be
+created, `SECURITY.md` still names no reporting channel, and the README's
+install/CDN lines stay marked "belum dipublish" until a real registry entry
+exists. `author` and `repository.url` were filled in at 1.0.0 — they are the
+identity and address of whoever maintains this repo, so never fill them with
+invented values either.
